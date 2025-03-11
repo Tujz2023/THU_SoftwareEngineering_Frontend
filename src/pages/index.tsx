@@ -1,180 +1,67 @@
-import { useRouter } from "next/router";
-import { useEffect, useRef, useState } from "react";
-import BoardUI from "../components/BoardUI";
-import { CREATE_SUCCESS, FAILURE_PREFIX, LOGIN_REQUIRED, UPDATE_SUCCESS } from "../constants/string";
-import { getBlankBoard, stepBoard, flipCell, boardToString, stringToBoard } from "../utils/logic";
-import { NetworkError, NetworkErrorType, request } from "../utils/network";
-import { RootState } from "../redux/store";
-import { resetBoardCache, setBoardCache } from "../redux/board";
-import { useSelector, useDispatch } from "react-redux";
+import { useState } from 'react';
+import { motion } from 'framer-motion';
 
-const BoardScreen = () => {
-    /**
-     * @todo [Step 3] 请在下述一处代码缺失部分填写合适的代码，使得棋盘状态正确切换且计时器资源分配、释放合理
-     */
-    const boardCache = useSelector((state: RootState) => state.board.board);
-    const userName = useSelector((state: RootState) => state.auth.name);
+const WelcomePage = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
 
-    const dispatch = useDispatch();
+  const handleLogin = () => {
+    alert(`登录尝试：用户名 - ${username}，密码 - ${password}`);
+  };
 
-    const [id, setId] = useState<undefined | number>(undefined);
-    const [initBoard, setInitBoard] = useState(getBlankBoard());
-    const [board, setBoard] = useState(boardCache);
-    const [autoPlay, setAutoPlay] = useState(false);
-    const [recordUserName, setRecordUserName] = useState("");
-    const [boardName, setBoardName] = useState("");
-    const [refreshing, setRefreshing] = useState(false);
+  const handleRegister = () => {
+    alert('前往注册页面（功能暂未实现）');
+  };
 
-    const timerRef = useRef<undefined | NodeJS.Timeout>(undefined);
+  return (
+    <div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-400 to-blue-500">
+      <motion.h1
+        className="text-5xl font-extrabold mb-12 bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-blue-300"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1 }}
+      >
+        🚀 欢迎来到即时通讯系统 🎉
+      </motion.h1>
 
-    const router = useRouter();
-    const query = router.query;
+      <motion.div
+        className="bg-white p-10 rounded-3xl shadow-2xl w-96 flex flex-col items-center"
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        <input
+          type="text"
+          placeholder="用户名"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          className="w-full p-3 mb-4 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+        <input
+          type="password"
+          placeholder="密码"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full p-3 mb-6 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
 
-    useEffect(() => {
-        if (!router.isReady) {
-            return;
-        }
-        if (router.query.id === undefined) {
-            // @todo 这里需要考虑是否需要加载缓存
-            setId(undefined);
-            return;
-        }
-        if (!/^\d+$/.test(router.query.id as string)) {
-            router.replace("/");
-            return;
-        }
-
-        setRefreshing(true);
-        setId(Number(router.query.id));
-        request(`/api/boards/${router.query.id}`, "GET", false)
-            .then((res) => {
-                const fetchedBoard = stringToBoard(res.board);
-
-                setBoard(fetchedBoard);
-                setInitBoard(fetchedBoard);
-                setBoardName(res.boardName);
-                setRecordUserName(res.userName);
-            })
-            .catch((err) => {
-                alert(FAILURE_PREFIX + err);
-                router.push("/");
-            })
-            .finally(() => setRefreshing(false));
-    }, [router, query]);
-
-    useEffect(() => () => {
-        clearInterval(timerRef.current);
-    }, []);
-
-    useEffect(() => {
-        if (id === undefined) {
-            dispatch(resetBoardCache());
-        }
-
-        return () => {
-            if (id === undefined) {
-                dispatch(setBoardCache(board));
-            }
-        };
-    }, [board, id, dispatch]);
-
-    const switchAutoPlay = () => {
-        // Step 3 BEGIN
-        if (autoPlay) {
-            clearInterval(timerRef.current);
-            setAutoPlay(false);
-        }
-        else {
-            timerRef.current = setInterval(() => {
-                setBoard((board) => stepBoard(board));
-            }, 300);
-            setAutoPlay(true);
-        }
-        // Step 3 END
-    };
-
-    const saveBoard = () => {
-        request(
-            "/api/boards",
-            "POST",
-            true,
-            {
-                userName,
-                boardName,
-                board: boardToString(board),
-            }
-        )
-            .then((res) => alert(res.isCreate ? CREATE_SUCCESS : UPDATE_SUCCESS))
-            .catch((err) => {
-                if (
-                    err instanceof NetworkError &&
-                    err.type === NetworkErrorType.UNAUTHORIZED
-                ) {
-                    alert(LOGIN_REQUIRED);
-                    router.push("/login");
-                }
-                else {
-                    alert(FAILURE_PREFIX + err);
-                }
-            });
-    };
-
-    return refreshing ? (
-        <p> Loading... </p>
-    ) : (
-        <>
-            {id === undefined ? (
-                <h4> Free Mode </h4>
-            ) : (
-                <h4> Replay Mode, Board ID: {id}, Author: {recordUserName} </h4>
-            )}
-            <BoardUI board={board} flip={(i, j) => {
-                if (!autoPlay) setBoard((board) => flipCell(board, i, j));
-            }} />
-            <div style={{ display: "flex", flexDirection: "column" }}>
-                <div style={{ display: "flex", flexDirection: "row" }}>
-                    <button onClick={() => setBoard((board) => stepBoard(board))} disabled={autoPlay}>
-                        Step the board
-                    </button>
-                    <button onClick={() => setBoard(getBlankBoard())} disabled={autoPlay}>
-                        Clear the board
-                    </button>
-                    {id !== undefined && (
-                        <button onClick={() => setBoard(initBoard)} disabled={autoPlay}>
-                            Undo all changes
-                        </button>
-                    )}
-                    <button onClick={switchAutoPlay}>
-                        {autoPlay ? "Stop" : "Start"} auto play
-                    </button>
-                </div>
-                {id === undefined && (
-                    <div style={{ display: "flex", flexDirection: "row" }}>
-                        <input
-                            type="text"
-                            placeholder="Name of this Board"
-                            value={boardName}
-                            disabled={autoPlay}
-                            onChange={(e) => setBoardName(e.target.value)}
-                        />
-                        <button onClick={saveBoard} disabled={autoPlay || boardName === ""}>
-                            Save board
-                        </button>
-                    </div>
-                )}
-                <div style={{ display: "flex", flexDirection: "row" }}>
-                    <button onClick={() => router.push("/list")}>
-                        Go to full list
-                    </button>
-                    {id !== undefined && (
-                        <button onClick={() => router.push("/")}>
-                            Go back to free mode
-                        </button>
-                    )}
-                </div>
-            </div>
-        </>
-    );
+        <div className="flex justify-between w-full">
+          <button
+            onClick={handleLogin}
+            className="bg-blue-500 text-white py-2 px-6 rounded-2xl hover:bg-blue-600 transition-transform transform hover:scale-105"
+          >
+            登录
+          </button>
+          <button
+            onClick={handleRegister}
+            className="text-blue-500 hover:underline"
+          >
+            还没有用户名？点击注册
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
 };
 
-export default BoardScreen;
+export default WelcomePage;
