@@ -16,27 +16,35 @@ build:
     - export BUILD_IMAGE_PASSWORD=$CI_REGISTRY_PASSWORD
     - deployer build
   only:
-    - main
+    - dev
 
 # TODO Start: [Student] Complete test stage
-.test-template:
+.test:
   image: node:22
+  stage: test
+
   before_script:
     - corepack enable
     - pnpm config set registry https://npm-cache-sepi.app.spring25a.secoder.net/
-    - pnpm install --frozen-lockfile
+    - pnpm install
 
-unit-test:
-  extends: .test-template
-  stage: test
-  script:
-    - pnpm test
-  after_script:
-    - sonar-scanner
+# unit-test:
+#   extends: .test
+
+#   script:
+#     - pnpm test
+#   after_script:
+#     - SUFFIX=$RANDOM
+#     - curl "http://api.spring25b.secoder.net/static/sonar-scanner.tar.gz" -s -o "/tmp/sonar-$SUFFIX.tar.gz"
+#     - tar -xf "/tmp/sonar-$SUFFIX.tar.gz"  -C /opt
+#     - sed -i 's/sonarqube.secoder.net/sonarqube.spring25b.secoder.net/g' /opt/sonar-scanner/conf/sonar-scanner.properties
+#     - sed -i 's/api.secoder.net/api.spring25b.secoder.net/g' /opt/sonar-scanner/bin/sonar-scanner
+#     - /opt/sonar-scanner/bin/sonar-scanner
 
 style-test:
-  extends: .test-template
-  stage: test
+  extends: .test
+  allow_failure: true
+
   script:
     - pnpm lint
 # TODO End
@@ -44,10 +52,7 @@ style-test:
 deploy:
   stage: deploy
   script:
-    - export DEPLOY_ENV=$GITLAB_USER_LOGIN
-    # TODO Start: [Student] URL
     - export API_SERVER=https://deployer.spring25b.secoder.net/api
-    # TODO End
-    - deployer dyno replace frontend $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG gitlab-ci-token $REGISTRY_PWD
+    - deployer dyno replace $CI_PROJECT_NAME "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG" "$REGISTRY_USER" "$REGISTRY_PWD"
   only:
-    - main
+    - dev

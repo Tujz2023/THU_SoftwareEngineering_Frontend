@@ -6,14 +6,14 @@ const nextConfig = {
     reactStrictMode: false, /* @note: To prevent duplicated call of useEffect */
     // swcMinify: true,
 
-    async rewrites() {
-        return [{
-            source: "/api/:path*",
-            // TODO Start: [Student] Change to standard backend URL
-            destination: "https://backend-sepi.app.spring25b.secoder.net/:path*", 
-            // TODO End
-        }];
-    }
+    // async rewrites() {
+    //     return [{
+    //         source: "/api/:path*",
+    //         // TODO Start: [Student] Change to standard backend URL
+    //         destination: "https://backend-sepi.app.spring25b.secoder.net/:path*", 
+    //         // TODO End
+    //     }];
+    // }
 };
 
 // eslint-disable-next-line no-undef

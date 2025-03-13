@@ -1,6 +1,7 @@
 import '../styles/globals.css'; // 确认路径正确
 import type { AppProps } from 'next/app';
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 function MyApp({ Component, pageProps }: AppProps) {
   return <Component {...pageProps} />;
 }
