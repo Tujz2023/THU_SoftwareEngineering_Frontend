@@ -44,7 +44,7 @@ const initialMessages: { [key: number]: Message[] } = {
 
 const ChatPage = () => {
   const [search, setSearch] = useState("");
-  const [selectedContactId, setSelectedContactId] = useState<number | null>(2); // Default to Aiden Chavez
+  const [selectedContactId, setSelectedContactId] = useState<number | undefined>(2); // Default to Aiden Chavez
   const [messages, setMessages] = useState<{ [key: number]: Message[] }>(initialMessages);
   const [input, setInput] = useState("");
 
