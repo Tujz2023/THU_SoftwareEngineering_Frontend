@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/router';
 
 const WelcomePage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const router = useRouter();
 
   const handleLogin = () => {
     alert(`登录尝试：用户名 - ${username}，密码 - ${password}`);
   };
 
   const handleRegister = () => {
-    alert('前往注册页面（功能暂未实现）');
+    router.push('/register');
   };
 
   return (
