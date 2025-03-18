@@ -1,14 +1,39 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/router';
+import { setEmail, setToken } from "../redux/auth";
+import { useDispatch } from "react-redux";
+import { BACKEND_URL, FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from '../constants/string';
 
 const WelcomePage = () => {
-  const [username, setUsername] = useState('');
+  const [userEmail, setUserEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
+  const dispatch = useDispatch();
 
   const handleLogin = () => {
-    alert(`登录尝试：用户名 - ${username}，密码 - ${password}`);
+    fetch(`${BACKEND_URL}/acount/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userEmail,
+        password,
+      }),
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        if (Number(res.code) === 0) {
+          dispatch(setToken(res.token));
+          dispatch(setEmail(userEmail));
+          alert(LOGIN_SUCCESS_PREFIX + userEmail);
+          router.push('/chat');
+        } else {
+          alert("登陆失败：" + res.info)
+        }
+      })
+      .catch((err) => alert(FAILURE_PREFIX + err));
   };
 
   const handleRegister = () => {
@@ -34,17 +59,17 @@ const WelcomePage = () => {
       >
         <input
           type="text"
-          placeholder="用户名"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          className="w-full p-3 mb-4 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+          placeholder="邮箱"
+          value={userEmail}
+          onChange={(e) => setUserEmail(e.target.value)}
+          className="w-full p-3 mb-4 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-600 text-black"
         />
         <input
           type="password"
           placeholder="密码"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-3 mb-6 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="w-full p-3 mb-6 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-600 text-black"
         />
 
         <div className="flex justify-between w-full">

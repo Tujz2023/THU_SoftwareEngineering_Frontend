@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/router';
+import { BACKEND_URL } from '../constants/string';
 
 const RegisterPage = () => {
   const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
+  const [userEmail, setUserEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const router = useRouter();
@@ -14,8 +15,28 @@ const RegisterPage = () => {
       alert('密码和确认密码不匹配');
       return;
     }
-    alert(`注册成功：用户名 - ${username}，邮箱 - ${email}`);
-    router.push('/');
+
+    fetch(`${BACKEND_URL}/account/reg`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userEmail,
+        password,
+  username,
+      }),
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        if (Number(res.code) === 0) {
+          alert(res.message);
+          router.push('/');
+        } else {
+          alert(res.info);
+        }
+      })
+      .catch((err) => alert(`注册失败: ${err}`));
   };
 
   return (
@@ -40,28 +61,28 @@ const RegisterPage = () => {
           placeholder="用户名"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          className="w-full p-3 mb-4 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400"
+          className="w-full p-3 mb-4 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400 placeholder-gray-600 text-black"
         />
         <input
           type="email"
           placeholder="邮箱"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full p-3 mb-4 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400"
+          value={userEmail}
+          onChange={(e) => setUserEmail(e.target.value)}
+          className="w-full p-3 mb-4 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400 placeholder-gray-600 text-black"
         />
         <input
           type="password"
           placeholder="密码"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-3 mb-4 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400"
+          className="w-full p-3 mb-4 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400 placeholder-gray-600 text-black"
         />
         <input
           type="password"
           placeholder="确认密码"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          className="w-full p-3 mb-6 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400"
+          className="w-full p-3 mb-6 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400 placeholder-gray-600 text-black"
         />
 
         <button
@@ -70,6 +91,16 @@ const RegisterPage = () => {
         >
           注册
         </button>
+      </motion.div>
+      <motion.div
+        className="absolute top-1/2 right-10 transform -translate-y-1/2 bg-white p-6 rounded-xl shadow-lg w-64 text-gray-700"
+        initial={{ opacity: 0, x: 50 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <h2 className="text-lg font-bold mb-2 text-green-600">📌 账号规则</h2>
+        <p className="text-sm mb-1">✅ 用户名可包含任何UTF-8字符，长度≤20</p>
+        <p className="text-sm">✅ 密码只能由字母、数字及下划线组成，长度≤20</p>
       </motion.div>
     </div>
   );

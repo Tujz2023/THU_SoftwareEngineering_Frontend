@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { FiSettings, FiImage, FiCamera, FiHelpCircle } from "react-icons/fi";
+import { FiSettings, FiImage, FiCamera, FiSmile, FiMessageCircle, FiUsers, FiMoreHorizontal, FiSliders } from "react-icons/fi";
 import { Input, Button, Layout, List, Avatar, Typography } from "antd";
+import { NetworkError, NetworkErrorType, request} from "../utils/network";
 import 'antd/dist/reset.css';
 
 const { Header, Sider, Content } = Layout;
@@ -62,9 +63,21 @@ const ChatPage = () => {
     setSelectedContactId(contactId);
   };
 
+  const handleIconClick = (iconName: string) => {
+    console.log(`${iconName} icon clicked`);
+  };
+
   return (
     <Layout style={{ height: "100vh" }}>
-      <Sider width={300} style={{ background: "#fff", borderRight: "1px solid #f0f0f0" }}>
+      {/* Vertical Toolbar */}
+      <Sider width={60} style={{ background: "#8A2BE2", borderRight: "1px solid #f0f0f0", display: "flex", flexDirection: "column", alignItems: "center", padding: "16px 0" }}>
+        <FiMessageCircle size={24} style={{ marginBottom: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("MessageCircle")} />
+        <FiUsers size={24} style={{ marginBottom: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Users")} />
+        <FiSettings size={24} style={{ color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Settings")} />
+      </Sider>
+
+      {/* Contact List */}
+      <Sider width={300} style={{ background: "#f0f0f0", borderRight: "1px solid #d9d9d9" }}>
         <div style={{ padding: "16px" }}>
           <Input.Search
             placeholder="Search..."
@@ -76,7 +89,7 @@ const ChatPage = () => {
             itemLayout="horizontal"
             dataSource={contacts.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))}
             renderItem={(contact) => (
-              <List.Item onClick={() => handleContactClick(contact.id)} style={{ cursor: "pointer" }}>
+              <List.Item onClick={() => handleContactClick(contact.id)} style={{ cursor: "pointer", background: "#f0f0f0" }}>
                 <List.Item.Meta
                   avatar={<Avatar src={contact.avatar} />}
                   title={contact.name}
@@ -87,43 +100,37 @@ const ChatPage = () => {
           />
         </div>
       </Sider>
+
       <Layout>
-        <Header
-          style={{
-            background: "#fff",
-            padding: "0 16px",
-            borderBottom: "1px solid #f0f0f0",
-            display: "flex",
-            alignItems: "center", // 确保内容垂直居中
-            height: "80px", // 增加高度
-          }}
-        >
+        {/* Header */}
+        <Header style={{ background: "#fff", padding: "0 16px", borderBottom: "1px solid #f0f0f0", display: "flex", alignItems: "center", height: "80px" }}>
           <Avatar src={contacts.find((c) => c.id === selectedContactId)?.avatar} size="large" />
           <div style={{ marginLeft: "16px", display: "flex", flexDirection: "column" }}>
-            <Text strong style={{ display: "block" }}>
-              {contacts.find((c) => c.id === selectedContactId)?.name}
-            </Text>
-            <Text type="secondary" style={{ display: "block" }}>
+            <Text strong>{contacts.find((c) => c.id === selectedContactId)?.name}</Text>
+            <Text type="secondary">
               {contacts.find((c) => c.id === selectedContactId)?.status === "online" ? "🟢 Online" : `🔴 Last seen: ${contacts.find((c) => c.id === selectedContactId)?.lastSeen}`}
             </Text>
           </div>
           <div style={{ marginLeft: "auto", display: "flex", gap: "16px" }}>
-            <FiCamera size={22} />
-            <FiImage size={22} />
-            <FiSettings size={22} />
-            <FiHelpCircle size={22} />
+            <FiImage size={22} style={{ cursor: "pointer" }} onClick={() => handleIconClick("Image")} />
+            <FiSmile size={22} style={{ cursor: "pointer" }} onClick={() => handleIconClick("Smile")} />
+            <FiMoreHorizontal size={22} style={{ cursor: "pointer" }} onClick={() => handleIconClick("MoreHorizontal")} />
           </div>
         </Header>
+
+        {/* Chat Content */}
         <Content style={{ padding: "16px", background: "#fff", overflowY: "auto" }}>
           {messages[selectedContactId!]?.map((msg, index) => (
             <div key={index} style={{ display: "flex", justifyContent: msg.sender === "me" ? "flex-end" : "flex-start", marginBottom: "16px" }}>
-              <div style={{ maxWidth: "60%", padding: "12px", borderRadius: "8px", background: msg.sender === "me" ? "#1890ff" : "#f0f0f0", color: msg.sender === "me" ? "#fff" : "#000" }}>
+              <div style={{ maxWidth: "60%", padding: "12px", borderRadius: "8px", background: msg.sender === "me" ? "#8A2BE2" : "#f0f0f0", color: msg.sender === "me" ? "#fff" : "#000" }}>
                 <p style={{ margin: 0 }}>{msg.text}</p>
                 <Text type="secondary" style={{ fontSize: "12px" }}>{msg.time}</Text>
               </div>
             </div>
           ))}
         </Content>
+
+        {/* Message Input */}
         <div style={{ padding: "16px", borderTop: "1px solid #f0f0f0", background: "#fff", display: "flex" }}>
           <Input
             placeholder="Enter text here..."
@@ -132,7 +139,7 @@ const ChatPage = () => {
             onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
             style={{ flex: 1, marginRight: "8px" }}
           />
-          <Button type="primary" onClick={handleSendMessage}>Send</Button>
+          <Button type="primary" onClick={handleSendMessage} style={{ backgroundColor: "#8A2BE2", borderColor: "#8A2BE2" }}>Send</Button>
         </div>
       </Layout>
     </Layout>
