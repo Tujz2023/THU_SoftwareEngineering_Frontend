@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/router';
 import { setEmail, setToken } from "../redux/auth";
 import { useDispatch } from "react-redux";
-import { BACKEND_URL, FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from '../constants/string';
+import { FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from '../constants/string';
 
 const WelcomePage = () => {
   const [userEmail, setUserEmail] = useState('');
@@ -12,14 +12,14 @@ const WelcomePage = () => {
   const dispatch = useDispatch();
 
   const handleLogin = () => {
-    fetch(`${BACKEND_URL}/acount/login`, {
+    fetch(`/api/account/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        userEmail,
-        password,
+        "email": userEmail,
+        password
       }),
     })
       .then((res) => res.json())
@@ -30,7 +30,7 @@ const WelcomePage = () => {
           alert(LOGIN_SUCCESS_PREFIX + userEmail);
           router.push('/chat');
         } else {
-          alert("登陆失败：" + res.info)
+          alert(LOGIN_FAILED + res.info)
         }
       })
       .catch((err) => alert(FAILURE_PREFIX + err));

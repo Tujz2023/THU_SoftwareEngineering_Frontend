@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/router';
-import { BACKEND_URL } from '../constants/string';
 
 const RegisterPage = () => {
   const [username, setUsername] = useState('');
@@ -16,15 +15,15 @@ const RegisterPage = () => {
       return;
     }
 
-    fetch(`${BACKEND_URL}/account/reg`, {
+    fetch(`/api/account/reg`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        userEmail,
+        "email": userEmail,
         password,
-  username,
+        "name": username
       }),
     })
       .then((res) => res.json())
