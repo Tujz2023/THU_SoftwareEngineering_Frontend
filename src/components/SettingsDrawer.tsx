@@ -11,7 +11,7 @@ interface SettingsDrawerProps {
 
 const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => {
   const [activeMenu, setActiveMenu] = useState("账号设置");
-  const [userInfo, setUserInfo] = useState<any>(null);
+  const [userInfo, setUserInfo] = useState<any>(undefined);
 
   const token = useSelector((state: any) => state.auth.token);
 
@@ -48,7 +48,7 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => 
       case "隐私设置":
         return <PrivacySettings />;
       default:
-        return null;
+        return undefined;
     }
   };
 
