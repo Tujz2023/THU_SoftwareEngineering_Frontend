@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/router';
+import { useDispatch } from 'react-redux';
+import { setEmail, setToken } from '../redux/auth';
 
 const RegisterPage = () => {
   const [username, setUsername] = useState('');
@@ -8,6 +10,7 @@ const RegisterPage = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const router = useRouter();
+  const dispatch = useDispatch();
 
   const handleRegister = () => {
     if (password !== confirmPassword) {
@@ -21,16 +24,19 @@ const RegisterPage = () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        "email": userEmail,
+        email: userEmail,
         password,
-        "name": username
+        name: username,
       }),
     })
       .then((res) => res.json())
       .then((res) => {
         if (Number(res.code) === 0) {
-          alert(res.message);
-          router.push('/');
+          // 注册成功后直接登录
+          dispatch(setToken(res.token)); // 保存 JWT 令牌到 Redux
+          dispatch(setEmail(userEmail)); // 保存用户邮箱到 Redux
+          alert('注册成功，已自动登录');
+          router.push('/chat');
         } else {
           alert(res.info);
         }

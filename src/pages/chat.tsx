@@ -3,6 +3,7 @@ import { FiSettings, FiImage, FiCamera, FiSmile, FiMessageCircle, FiUsers, FiMor
 import { Input, Button, Layout, List, Avatar, Typography } from "antd";
 import { NetworkError, NetworkErrorType, request} from "../utils/network";
 import 'antd/dist/reset.css';
+import SettingsDrawer from "../components/SettingsDrawer";
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -48,6 +49,7 @@ const ChatPage = () => {
   const [selectedContactId, setSelectedContactId] = useState<number | undefined>(2); // Default to Aiden Chavez
   const [messages, setMessages] = useState<{ [key: number]: Message[] }>(initialMessages);
   const [input, setInput] = useState("");
+  const [isDrawerVisible, setIsDrawerVisible] = useState(false);
 
   const handleSendMessage = () => {
     if (!input.trim()) return;
@@ -64,16 +66,41 @@ const ChatPage = () => {
   };
 
   const handleIconClick = (iconName: string) => {
-    console.log(`${iconName} icon clicked`);
+    if (iconName === "Settings") {
+      setIsDrawerVisible(true); // 打开设置抽屉
+    } else {
+      console.log(`${iconName} icon clicked`);
+    }
+  };
+
+  const handleAvatarClick = () => {
+    console.log("Avatar clicked");
+    alert("这是你的个人头像！");
   };
 
   return (
-    <Layout style={{ height: "100vh" }}>
-      {/* Vertical Toolbar */}
-      <Sider width={60} style={{ background: "#8A2BE2", borderRight: "1px solid #f0f0f0", display: "flex", flexDirection: "column", alignItems: "center", padding: "16px 0" }}>
-        <FiMessageCircle size={24} style={{ marginBottom: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("MessageCircle")} />
-        <FiUsers size={24} style={{ marginBottom: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Users")} />
-        <FiSettings size={24} style={{ color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Settings")} />
+        <Layout style={{ height: "100vh" }}>
+          {/* Vertical Toolbar */}
+          <Sider
+            width={60}
+            style={{
+              background: "#8A2BE2",
+              borderRight: "1px solid #f0f0f0",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "space-between", // 调整布局
+              padding: "16px 0",
+            }}
+          >
+            {/* User Avatar */}
+        <Avatar src="/path/to/your-avatar.png" size={40} style={{ marginBottom: "24px", cursor: "pointer" }} onClick={handleAvatarClick} />
+
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px" }}>
+          <FiMessageCircle size={24} style={{ color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("MessageCircle")} />
+          <FiUsers size={24} style={{ color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Users")} />
+          <FiSettings size={24} style={{ color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Settings")} />
+        </div>
       </Sider>
 
       {/* Contact List */}
@@ -142,6 +169,9 @@ const ChatPage = () => {
           <Button type="primary" onClick={handleSendMessage} style={{ backgroundColor: "#8A2BE2", borderColor: "#8A2BE2" }}>Send</Button>
         </div>
       </Layout>
+
+      {/* Settings Drawer */}
+      <SettingsDrawer visible={isDrawerVisible} onClose={() => setIsDrawerVisible(false)} />
     </Layout>
   );
 };
