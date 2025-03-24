@@ -10,6 +10,7 @@ interface SettingsDrawerProps {
 }
 
 const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => {
+  const [messageApi, contextHolder] = message.useMessage();
   const [activeMenu, setActiveMenu] = useState("账号设置");
   const [userInfo, setUserInfo] = useState<any>(undefined);
 
@@ -28,11 +29,18 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => 
         if (Number(res.code) === 0) {
           setUserInfo(res);
         } else {
-          message.error(res.info || "获取用户信息失败");
+          messageApi.open({
+            type: 'error',
+            content: res.info || "获取用户信息失败",
+          });
         }
       })
       .catch((err) => {
-        message.error(`网络错误，请稍后重试: ${err}`);
+        messageApi.open({
+          type: 'error',
+          content: `网络错误，请稍后重试: ${err}`
+        });
+        // message.error(`网络错误，请稍后重试: ${err}`);
       });
   };
 
@@ -45,7 +53,7 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => 
   const renderContent = () => {
     switch (activeMenu) {
       case "账号设置":
-        return <AccountSettings userInfo={userInfo} />;
+        return <AccountSettings userInfo={userInfo} fetchUserInfo={fetchUserInfo} />;
       case "隐私设置":
         return <PrivacySettings />;
       default:
@@ -54,6 +62,8 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => 
   };
 
   return (
+    <>
+    {contextHolder}
     <Drawer
       title="设置"
       placement="left"
@@ -96,6 +106,7 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => 
         <div style={{ flex: 1, padding: "16px" }}>{renderContent()}</div>
       </div>
     </Drawer>
+    </>
   );
 };
 

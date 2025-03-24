@@ -46,12 +46,14 @@ const initialMessages: { [key: number]: Message[] } = {
 };
 
 const ChatPage = () => {
+  const [messageApi, contextHolder] = message.useMessage();
   const [search, setSearch] = useState("");
   const [selectedContactId, setSelectedContactId] = useState<number | undefined>(2); // Default to Aiden Chavez
   const [messages, setMessages] = useState<{ [key: number]: Message[] }>(initialMessages);
   const [input, setInput] = useState("");
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const router = useRouter(); // 初始化 useRouter
+  const [showAlert, setShowAlert] = useState(false);
 
   // 从 Redux Store 获取 JWT Token
   const token = useSelector((state: any) => state.auth.token);
@@ -59,10 +61,34 @@ const ChatPage = () => {
   // 检查 JWT Token 的有效性
   useEffect(() => {
     if (!token) {
-      message.error("请先登录！"); // 如果没有 Token，弹出提示
-      router.push("/").then(() => window.location.reload()); // 如果没有 Token，跳转到登录页面
+      router.push("/").then(() => setShowAlert(true));
     }
-  }, [token, router]);
+  }, [router]);
+  useEffect(() => {
+    if (showAlert) {
+      // 如果没有 Token，弹出提示
+      alert('请先登录！（不要随便刷新哟）');
+      setShowAlert(false);
+      window.location.reload();
+    }
+  }, [showAlert]);
+  // useEffect(() => {
+  //   if (!token) {
+  //     router.push("/").then(
+  //       () => window.location.reload()
+  //     ).then(() => (
+  //       if (showAlert) 
+  //         {alert('请先登录！（不要随便刷新哟）')}
+  //     )); // 如果没有 Token，跳转到登录页面
+  //     // alert('请先登录！（不要随便刷新哟）');
+  //     // messageApi.open({
+  //     //   type: 'error',
+  //     //   content: '请先登录！',
+  //     // });
+  //     // 如果没有 Token，弹出提示
+  //     // router.push('/');
+  //   }
+  // }, [router]);
 
   const handleSendMessage = () => {
     if (!input.trim()) return;
@@ -92,6 +118,8 @@ const ChatPage = () => {
   };
 
   return (
+    <>
+      {contextHolder}
         <Layout style={{ height: "100vh" }}>
           {/* Vertical Toolbar */}
           <Sider
@@ -186,6 +214,7 @@ const ChatPage = () => {
       {/* Settings Drawer */}
       <SettingsDrawer visible={isDrawerVisible} onClose={() => setIsDrawerVisible(false)} />
     </Layout>
+    </>
   );
 };
 

@@ -10,7 +10,8 @@ interface AccountSettingsProps {
   userInfo: any;
 }
 
-const AccountSettings: React.FC<AccountSettingsProps> = ({ userInfo }) => {
+const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => void }> = ({ userInfo, fetchUserInfo }) => {
+  const [messageApi, contextHolder] = message.useMessage();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false); // 控制修改信息模态框的显示
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false); // 控制修改密码模态框的显示
@@ -22,7 +23,11 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ userInfo }) => {
 
   const handleLogout = () => {
     dispatch(resetAuth());
-    message.success("已退出登录");
+    messageApi.open({
+      type: 'success',
+      content: "已退出登录"
+    });
+    // message.success("已退出登录");
     router.push('/').then(() => window.location.reload());
   };
 
@@ -36,15 +41,27 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ userInfo }) => {
       .then((res) => res.json())
       .then((res) => {
         if (res.code === 0) {
-          message.success(res.message || "注销成功");
+          messageApi.open({
+            type: 'success',
+            content: res.message || "注销成功"
+          });
+          // message.success(res.message || "注销成功");
           dispatch(resetAuth());
           router.push('/').then(() => window.location.reload());
         } else {
-          message.error(res.info || "注销失败");
+          messageApi.open({
+            type: 'error',
+            content: res.info || "注销失败"
+          });
+          // message.error(res.info || "注销失败");
         }
       })
       .catch((err) => {
-        message.error(`网络错误，请稍后重试: ${err}`);
+        messageApi.open({
+          type: 'error',
+          content: `网络错误，请稍后重试: ${err}`
+        });
+        // message.error(`网络错误，请稍后重试: ${err}`);
       })
       .finally(() => {
         setIsModalVisible(false);
@@ -52,13 +69,13 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ userInfo }) => {
   };
 
   const handleEditInfo = (values: any) => {
-    const payload: any = {
-      origin_password: values.origin_password, // 用户输入的原密码
-      name: values.name,
-      password: values.password,
-      email: values.email,
-      user_info: values.user_info,
-      avatar_path: values.avatar_path,
+    const payload = {
+      "origin_password": values.origin_password, //用户输入的原密码
+      ...(values.name && { "name": values.name }),
+      ...(values.password && { "password": values.password }),
+      ...(values.email && { "email": values.email }),
+      ...(values.user_info && { "user_info": values.user_info }),
+      ...(values.avatar_path && { "avatar_path": values.avatar_path }),
     };
 
     fetch("/api/account/info", {
@@ -72,11 +89,20 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ userInfo }) => {
       .then((res) => res.json())
       .then((res) => {
         if (res.code === 0) {
-          message.success(res.message || "修改成功");
+          messageApi.open({
+            type: 'success',
+            content: res.message || "修改成功"
+          });
+          // message.success(res.message || "修改成功");
           setIsEditModalVisible(false);
           setIsPasswordModalVisible(false); // 关闭修改密码模态框（如果是修改密码）
+          fetchUserInfo();
         } else {
-          message.error(res.info || "信息修改失败");
+          messageApi.open({
+            type: 'error',
+            content: res.info || "信息修改失败"
+          });
+          // alert(res.info || "信息修改失败");
         }
       });
   };
@@ -86,6 +112,8 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ userInfo }) => {
   }
 
   return (
+    <>
+    {contextHolder}
     <div style={{ padding: "16px", display: "flex", flexDirection: "column", justifyContent: "space-between", height: "100%" }}>
       <div>
         <div style={{ textAlign: "center", marginBottom: "24px" }}>
@@ -212,6 +240,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ userInfo }) => {
         <p>您确定要注销账户吗？此操作不可撤销。</p>
       </Modal>
     </div>
+    </>
   );
 };
 

@@ -4,8 +4,11 @@ import { useRouter } from 'next/router';
 import { setEmail, setToken } from "../redux/auth";
 import { useDispatch } from "react-redux";
 import { FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from '../constants/string';
+// import { Button, message, Space } from 'antd';
 
 const WelcomePage = () => {
+  // const [messageApi, contextHolder] = message.useMessage();
+
   const [userEmail, setUserEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
