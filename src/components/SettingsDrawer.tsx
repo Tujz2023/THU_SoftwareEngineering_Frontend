@@ -19,6 +19,7 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => 
     fetch("/api/account/info", {
       method: "GET",
       headers: {
+        "Content-Type": "application/json",
         Authorization: token,
       },
     })

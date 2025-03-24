@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/router"; // 引入 useRouter
+import { useSelector } from "react-redux"; // 引入 useSelector
 import { FiSettings, FiImage, FiCamera, FiSmile, FiMessageCircle, FiUsers, FiMoreHorizontal, FiSliders } from "react-icons/fi";
-import { Input, Button, Layout, List, Avatar, Typography } from "antd";
-import { NetworkError, NetworkErrorType, request} from "../utils/network";
+import { Input, Button, Layout, List, Avatar, Typography, message } from "antd";
 import 'antd/dist/reset.css';
 import SettingsDrawer from "../components/SettingsDrawer";
 
@@ -50,6 +51,18 @@ const ChatPage = () => {
   const [messages, setMessages] = useState<{ [key: number]: Message[] }>(initialMessages);
   const [input, setInput] = useState("");
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
+  const router = useRouter(); // 初始化 useRouter
+
+  // 从 Redux Store 获取 JWT Token
+  const token = useSelector((state: any) => state.auth.token);
+
+  // 检查 JWT Token 的有效性
+  useEffect(() => {
+    if (!token) {
+      message.error("请先登录！"); // 如果没有 Token，弹出提示
+      router.push("/").then(() => window.location.reload()); // 如果没有 Token，跳转到登录页面
+    }
+  }, [token, router]);
 
   const handleSendMessage = () => {
     if (!input.trim()) return;
