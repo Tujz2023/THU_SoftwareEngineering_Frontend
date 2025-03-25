@@ -69,7 +69,6 @@ const ChatPage = () => {
       // 如果没有 Token，弹出提示
       alert('请先登录！（不要随便刷新哟）');
       setShowAlert(false);
-      window.location.reload();
     }
   }, [showAlert]);
   // useEffect(() => {

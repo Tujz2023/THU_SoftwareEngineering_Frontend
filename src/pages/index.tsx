@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { useRouter } from 'next/router';
 import { setEmail, setToken } from "../redux/auth";
 import { useDispatch } from "react-redux";
 import { FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from '../constants/string';
-// import { Button, message, Space } from 'antd';
+import { Typography, Card, Input, Button } from 'antd';
+
+const { Title, Text } = Typography;
 
 const WelcomePage = () => {
-  // const [messageApi, contextHolder] = message.useMessage();
-
   const [userEmail, setUserEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
@@ -45,51 +44,77 @@ const WelcomePage = () => {
 
   return (
     <div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-400 to-blue-500">
-      <motion.h1
+      <Title
+        level={1}
         className="text-5xl font-extrabold mb-12 bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-blue-300"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1 }}
+        style={{
+          backgroundClip: 'text',
+          WebkitBackgroundClip: 'text',
+          color: 'transparent',
+          backgroundImage: 'linear-gradient(to right, #ec4899, #93c5fd)',
+        }}
       >
         🚀 欢迎来到即时通讯系统 🎉
-      </motion.h1>
+      </Title>
 
-      <motion.div
-        className="bg-white p-10 rounded-3xl shadow-2xl w-96 flex flex-col items-center"
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
+      <Card
+        className="w-96"
+        style={{
+          padding: '2.5rem',
+          borderRadius: '1.5rem',
+          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center',
+        }}
       >
-        <input
+        <Input
           type="text"
           placeholder="邮箱"
           value={userEmail}
           onChange={(e) => setUserEmail(e.target.value)}
-          className="w-full p-3 mb-4 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-600 text-black"
+          className="mb-4"
+          style={{
+            padding: '0.75rem',
+            borderRadius: '1rem',
+            marginBottom: '1rem',
+          }}
         />
-        <input
-          type="password"
+        <Input.Password
           placeholder="密码"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-3 mb-6 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-600 text-black"
+          className="mb-6"
+          style={{
+            padding: '0.75rem',
+            borderRadius: '1rem',
+            marginBottom: '1.5rem',
+          }}
         />
 
         <div className="flex justify-between w-full">
-          <button
+          <Button
+            type="primary"
             onClick={handleLogin}
-            className="bg-blue-500 text-white py-2 px-6 rounded-2xl hover:bg-blue-600 transition-transform transform hover:scale-105"
+            style={{
+              backgroundColor: '#3b82f6',
+              borderColor: '#3b82f6',
+              padding: '0.5rem 1.5rem',
+              borderRadius: '1rem',
+            }}
           >
             登录
-          </button>
-          <button
+          </Button>
+          <Button
+            type="link"
             onClick={handleRegister}
-            className="text-blue-500 hover:underline"
+            style={{
+              color: '#3b82f6',
+              textDecoration: 'underline',
+            }}
           >
             还没有用户名？点击注册
-          </button>
+          </Button>
         </div>
-      </motion.div>
+      </Card>
     </div>
   );
 };

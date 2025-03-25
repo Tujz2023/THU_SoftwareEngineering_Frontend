@@ -28,7 +28,7 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
       content: "已退出登录"
     });
     // message.success("已退出登录");
-    router.push('/').then(() => window.location.reload());
+    router.push('/');
   };
 
   const handleDeleteAccount = () => {
@@ -47,7 +47,7 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
           });
           // message.success(res.message || "注销成功");
           dispatch(resetAuth());
-          router.push('/').then(() => window.location.reload());
+          router.push('/');
         } else {
           messageApi.open({
             type: 'error',
