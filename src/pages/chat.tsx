@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router"; // 引入 useRouter
-import { useSelector } from "react-redux"; // 引入 useSelector
+import Cookies from "js-cookie"; // 引入 js-cookie
 import { FiSettings, FiImage, FiCamera, FiSmile, FiMessageCircle, FiUsers, FiMoreHorizontal, FiSliders } from "react-icons/fi";
 import { Input, Button, Layout, List, Avatar, Typography, message } from "antd";
 import 'antd/dist/reset.css';
@@ -55,15 +55,16 @@ const ChatPage = () => {
   const router = useRouter(); // 初始化 useRouter
   const [showAlert, setShowAlert] = useState(false);
 
-  // 从 Redux Store 获取 JWT Token
-  const token = useSelector((state: any) => state.auth.token);
-
+  // 从 Cookie 中获取 JWT Token
+  const token = Cookies.get("jwtToken");
+  
   // 检查 JWT Token 的有效性
   useEffect(() => {
     if (!token) {
       router.push("/").then(() => setShowAlert(true));
     }
-  }, [router]);
+  }, [router, token]);
+
   useEffect(() => {
     if (showAlert) {
       // 如果没有 Token，弹出提示
@@ -71,23 +72,6 @@ const ChatPage = () => {
       setShowAlert(false);
     }
   }, [showAlert]);
-  // useEffect(() => {
-  //   if (!token) {
-  //     router.push("/").then(
-  //       () => window.location.reload()
-  //     ).then(() => (
-  //       if (showAlert) 
-  //         {alert('请先登录！（不要随便刷新哟）')}
-  //     )); // 如果没有 Token，跳转到登录页面
-  //     // alert('请先登录！（不要随便刷新哟）');
-  //     // messageApi.open({
-  //     //   type: 'error',
-  //     //   content: '请先登录！',
-  //     // });
-  //     // 如果没有 Token，弹出提示
-  //     // router.push('/');
-  //   }
-  // }, [router]);
 
   const handleSendMessage = () => {
     if (!input.trim()) return;

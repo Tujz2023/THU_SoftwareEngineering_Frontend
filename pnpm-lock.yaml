@@ -23,6 +23,9 @@ importers:
       jest-sonar-reporter:
         specifier: ^2.0.0
         version: 2.0.0
+      js-cookie:
+        specifier: ^3.0.5
+        version: 3.0.5
       next:
         specifier: 15.1.7
         version: 15.1.7(@babel/core@7.26.9)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -63,6 +66,9 @@ importers:
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
+      '@types/js-cookie':
+        specifier: ^3.0.6
+        version: 3.0.6
       '@types/node':
         specifier: ^22.13.4
         version: 22.13.4
@@ -1796,6 +1802,9 @@ packages:
 
   '@types/jest@29.5.14':
     resolution: {integrity: sha512-ZN+4sdnLUbo8EVvVc2ao0GFW6oVrQRPn4K2lglySj7APvSrgzxHiNNK99us4WDMi57xxA2yggblIAMNhXOotLQ==}
+
+  '@types/js-cookie@3.0.6':
+    resolution: {integrity: sha512-wkw9yd1kEXOPnvEeEV1Go1MmxtBJL0RR79aOTAApecWFVu7w0NNXNqhcWgvw2YgZDYadliXkl14pa3WXw5jlCQ==}
 
   '@types/jsdom@20.0.1':
     resolution: {integrity: sha512-d0r18sZPmMQr1eG35u12FZfhIXNrnsPU/g5wvRKCUf/tOGilKKwYMYGqh33BNR6ba+2gkHw1EUiHoN3mn7E5IQ==}
@@ -4346,6 +4355,10 @@ packages:
   jiti@2.4.2:
     resolution: {integrity: sha512-rg9zJN+G4n2nfJl5MW3BMygZX56zKPNVEYYqq7adpmMh4Jn2QNEwhvQlFy6jPVdcod7txZtKHWnyZiA3a0zP7A==}
     hasBin: true
+
+  js-cookie@3.0.5:
+    resolution: {integrity: sha512-cEiJEAEoIbWfCZYKWhVwFuvPX1gETRYPw6LlaTKoxD3s2AkXzkCjnp6h0V77ozyqj0jakteJ4YqDJT830+lVGw==}
+    engines: {node: '>=14'}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -9084,6 +9097,8 @@ snapshots:
       expect: 29.7.0
       pretty-format: 29.7.0
 
+  '@types/js-cookie@3.0.6': {}
+
   '@types/jsdom@20.0.1':
     dependencies:
       '@types/node': 22.13.4
@@ -12582,6 +12597,8 @@ snapshots:
   jiti@1.21.7: {}
 
   jiti@2.4.2: {}
+
+  js-cookie@3.0.5: {}
 
   js-tokens@4.0.0: {}
 

@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { useDispatch } from 'react-redux';
-import { setEmail, setToken } from '../redux/auth';
 import { Typography, Card, Input, Button, Alert } from 'antd';
 import { motion } from 'framer-motion'; // 引入 framer-motion
+import Cookies from 'js-cookie'; // 引入 js-cookie 库
 
 const { Title, Text } = Typography;
 
@@ -14,7 +13,6 @@ const RegisterPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const router = useRouter();
-  const dispatch = useDispatch();
 
   const handleRegister = () => {
     if (password !== confirmPassword) {
@@ -36,9 +34,8 @@ const RegisterPage = () => {
       .then((res) => res.json())
       .then((res) => {
         if (Number(res.code) === 0) {
-          // 注册成功后直接登录
-          dispatch(setToken(res.token)); // 保存 JWT 令牌到 Redux
-          dispatch(setEmail(userEmail)); // 保存用户邮箱到 Redux
+          // 注册成功后将 JWT Token 存储到 Cookie 中
+          Cookies.set('jwtToken', res.token, { expires: 7 }); // 设置有效期为 7 天
           alert('注册成功，已自动登录');
           router.push('/chat');
         } else {

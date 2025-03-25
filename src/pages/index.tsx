@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { setEmail, setToken } from "../redux/auth";
-import { useDispatch } from "react-redux";
 import { FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from '../constants/string';
 import { Typography, Card, Input, Button } from 'antd';
 import { motion } from 'framer-motion'; // 引入 framer-motion
+import Cookies from 'js-cookie'; // 引入 js-cookie 库
 
 const { Title, Text } = Typography;
 
@@ -12,7 +11,6 @@ const WelcomePage = () => {
   const [userEmail, setUserEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
-  const dispatch = useDispatch();
 
   const handleLogin = () => {
     fetch(`/api/account/login`, {
@@ -28,8 +26,8 @@ const WelcomePage = () => {
       .then((res) => res.json())
       .then((res) => {
         if (Number(res.code) === 0) {
-          dispatch(setToken(res.token));
-          dispatch(setEmail(userEmail));
+          // 将 JWT Token 存储到 Cookie 中
+          Cookies.set('jwtToken', res.token, { expires: 7 }); // 设置有效期为 7 天
           alert(LOGIN_SUCCESS_PREFIX + userEmail);
           router.push('/chat');
         } else {

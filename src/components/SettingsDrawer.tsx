@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Drawer, message } from "antd";
-import { useSelector } from "react-redux";
+import Cookies from "js-cookie"; // 引入 js-cookie
 import AccountSettings from "./SettingsDrawer/AccountSettings";
 import PrivacySettings from "./SettingsDrawer/PrivacySettings";
 
@@ -14,14 +14,15 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => 
   const [activeMenu, setActiveMenu] = useState("账号设置");
   const [userInfo, setUserInfo] = useState<any>(undefined);
 
-  const token = useSelector((state: any) => state.auth.token);
+  // 从 Cookie 中获取 JWT Token
+  const token = Cookies.get("jwtToken");
 
   const fetchUserInfo = () => {
     fetch("/api/account/info", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        Authorization: token,
+        Authorization: `${token}`,
       },
     })
       .then((res) => res.json())

@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { Avatar, Typography, Button, Modal, message, Form, Input } from "antd";
-import { useDispatch, useSelector } from "react-redux";
+import Cookies from "js-cookie"; // 引入 js-cookie
 import { useRouter } from "next/router";
-import { resetAuth } from "../../redux/auth"; // 引入 resetAuth action
 
 const { Text } = Typography;
 
@@ -17,12 +16,12 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false); // 控制修改密码模态框的显示
   const [form] = Form.useForm();
   const [passwordForm] = Form.useForm();
-  const dispatch = useDispatch();
   const router = useRouter();
-  const token = useSelector((state: any) => state.auth.token); // 从 Redux 中获取 token
+  const token = Cookies.get("jwtToken");
+
 
   const handleLogout = () => {
-    dispatch(resetAuth());
+    Cookies.remove("jwtToken");
     messageApi.open({
       type: 'success',
       content: "已退出登录"
@@ -35,7 +34,7 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
     fetch("/api/account/delete", {
       method: "DELETE",
       headers: {
-        Authorization: token,
+        Authorization: `${token}`,
       },
     })
       .then((res) => res.json())
@@ -46,7 +45,6 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
             content: res.message || "注销成功"
           });
           // message.success(res.message || "注销成功");
-          dispatch(resetAuth());
           router.push('/');
         } else {
           messageApi.open({
@@ -82,7 +80,7 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        Authorization: token,
+        Authorization: `${token}`,
       },
       body: JSON.stringify(payload),
     })
