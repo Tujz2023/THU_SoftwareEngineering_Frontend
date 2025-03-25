@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useDispatch } from 'react-redux';
 import { setEmail, setToken } from '../redux/auth';
 import { Typography, Card, Input, Button, Alert } from 'antd';
+import { motion } from 'framer-motion'; // 引入 framer-motion
 
 const { Title, Text } = Typography;
 
@@ -47,13 +48,25 @@ const RegisterPage = () => {
       .catch((err) => setErrorMessage(`注册失败: ${err}`));
   };
 
+  const handleBackToLogin = () => {
+    router.push('/');
+  };
+
   return (
-    <div
+    <motion.div
       className="h-screen w-screen flex items-center justify-center bg-gradient-to-br from-green-400 to-blue-500"
-      style={{ position: 'relative', padding: '50px 20px' }} // 添加 position: relative 以便定位右侧卡片
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 1 }}
+      style={{ position: 'relative', padding: '50px 20px' }}
     >
       {/* 注册组件 */}
-      <div className="flex flex-col items-center">
+      <motion.div
+        className="flex flex-col items-center"
+        initial={{ y: -50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.8 }}
+      >
         <Title
           level={1}
           className="text-5xl font-extrabold mb-12 bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-green-300"
@@ -142,41 +155,63 @@ const RegisterPage = () => {
               padding: '0.5rem 1.5rem',
               borderRadius: '1rem',
               width: '100%',
+              marginBottom: '1rem',
             }}
           >
             注册
           </Button>
+
+          <Button
+            type="default"
+            onClick={handleBackToLogin}
+            style={{
+              backgroundColor: '#fff',
+              borderColor: '#d1d5db',
+              color: '#4b5563',
+              padding: '0.5rem 1.5rem',
+              borderRadius: '1rem',
+              width: '100%',
+            }}
+          >
+            返回登录
+          </Button>
         </Card>
-      </div>
+      </motion.div>
 
       {/* 账号规则卡片 */}
-      <Card
-        className="absolute"
-        style={{
-          position: 'absolute',
-          top: '50%',
-          right: '5%',
-          transform: 'translateY(-50%)', // 垂直居中
-          background: '#fff',
-          padding: '1.5rem',
-          borderRadius: '1rem',
-          boxShadow: '0 5px 15px rgba(0, 0, 0, 0.1)',
-          width: '20rem',
-          textAlign: 'left',
-          color: '#4b5563',
-        }}
+      <motion.div
+        initial={{ x: 0, opacity: 0 }} // 从页面中间开始
+        animate={{ x: 330, opacity: 1 }} // 滑动到右侧固定位置并显示
+        transition={{ duration: 0.8, delay: 0.5 }} // 动画持续时间和延迟
       >
-        <Title level={4} style={{ color: '#16a34a', marginBottom: '0.5rem' }}>
-          📌 账号规则
-        </Title>
-        <Text style={{ display: 'block', marginBottom: '0.5rem' }}>
-          ✅ 用户名可包含任何 UTF-8 字符，长度 ≤ 20
-        </Text>
-        <Text style={{ display: 'block' }}>
-          ✅ 密码只能由字母、数字及下划线组成，长度 ≤ 20
-        </Text>
-      </Card>
-    </div>
+        <Card
+          className="absolute"
+          style={{
+            position: 'absolute',
+            top: '50%',
+            right: '5%',
+            transform: 'translateY(-50%)', // 垂直居中
+            background: '#fff',
+            padding: '1.5rem',
+            borderRadius: '1rem',
+            boxShadow: '0 5px 15px rgba(0, 0, 0, 0.1)',
+            width: '20rem',
+            textAlign: 'left',
+            color: '#4b5563',
+          }}
+        >
+          <Title level={4} style={{ color: '#16a34a', marginBottom: '0.5rem' }}>
+            📌 账号规则
+          </Title>
+          <Text style={{ display: 'block', marginBottom: '0.5rem' }}>
+            ✅ 用户名可包含任何 UTF-8 字符，长度 ≤ 20
+          </Text>
+          <Text style={{ display: 'block' }}>
+            ✅ 密码只能由字母、数字及下划线组成，长度 ≤ 20
+          </Text>
+        </Card>
+      </motion.div>
+    </motion.div>
   );
 };
 
