@@ -5,6 +5,7 @@ import { FiSettings, FiImage, FiCamera, FiSmile, FiMessageCircle, FiUsers, FiMor
 import { Input, Button, Layout, List, Avatar, Typography, message } from "antd";
 import 'antd/dist/reset.css';
 import SettingsDrawer from "../components/SettingsDrawer";
+import {DEFAULT_AVATAR} from "../constants/avatar";
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -24,12 +25,12 @@ interface Message {
 }
 
 const contacts: Contact[] = [
-  { id: 1, name: "Vincent Porter", avatar: "/avatar1.png", status: "offline", lastSeen: "7 mins ago" },
-  { id: 2, name: "Aiden Chavez", avatar: "/avatar2.png", status: "online" },
-  { id: 3, name: "Mike Thomas", avatar: "/avatar3.png", status: "online" },
-  { id: 4, name: "Christian Kelly", avatar: "/avatar4.png", status: "offline", lastSeen: "10 hours ago" },
-  { id: 5, name: "Monica Ward", avatar: "/avatar5.png", status: "online" },
-  { id: 6, name: "Dean Henry", avatar: "/avatar6.png", status: "offline", lastSeen: "Oct 28" },
+  { id: 1, name: "Vincent Porter", avatar: DEFAULT_AVATAR, status: "offline", lastSeen: "7 mins ago" },
+  { id: 2, name: "Aiden Chavez", avatar: DEFAULT_AVATAR, status: "online" },
+  { id: 3, name: "Mike Thomas", avatar: DEFAULT_AVATAR, status: "online" },
+  { id: 4, name: "Christian Kelly", avatar: DEFAULT_AVATAR, status: "offline", lastSeen: "10 hours ago" },
+  { id: 5, name: "Monica Ward", avatar: DEFAULT_AVATAR, status: "online" },
+  { id: 6, name: "Dean Henry", avatar: DEFAULT_AVATAR, status: "offline", lastSeen: "Oct 28" },
 ];
 
 const initialMessages: { [key: number]: Message[] } = {
@@ -54,24 +55,42 @@ const ChatPage = () => {
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const router = useRouter(); // 初始化 useRouter
   const [showAlert, setShowAlert] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // 从 Cookie 中获取 JWT Token
   const token = Cookies.get("jwtToken");
   
   // 检查 JWT Token 的有效性
   useEffect(() => {
-    if (!token) {
-      router.push("/").then(() => setShowAlert(true));
+    // 检查 cookies 中是否已存在 jwtToken
+    const jwtToken = Cookies.get('jwtToken');
+    if (!jwtToken) {
+      setIsAuthenticated(false);
+      router.push('/').then(() => setShowAlert(true));
+    } else {
+      setIsAuthenticated(true);
     }
-  }, [router, token]);
-
+  }, [router]);
+    
   useEffect(() => {
     if (showAlert) {
-      // 如果没有 Token，弹出提示
-      alert('请先登录！（不要随便刷新哟）');
+      alert('请先登录!');
       setShowAlert(false);
     }
   }, [showAlert]);
+  // useEffect(() => {
+  //   if (!token) {
+  //     router.push("/").then(() => setShowAlert(true));
+  //   }
+  // }, [router, token]);
+
+  // useEffect(() => {
+  //   if (showAlert) {
+  //     // 如果没有 Token，弹出提示
+  //     alert('请先登录!');
+  //     setShowAlert(false);
+  //   }
+  // }, [showAlert]);
 
   const handleSendMessage = () => {
     if (!input.trim()) return;
@@ -99,7 +118,9 @@ const ChatPage = () => {
     console.log("Avatar clicked");
     alert("这是你的个人头像！");
   };
-
+  if (!isAuthenticated) {
+    return <p>您未登录，正在跳转...</p>;
+  }
   return (
     <>
       {contextHolder}
@@ -118,7 +139,7 @@ const ChatPage = () => {
             }}
           >
             {/* User Avatar */}
-        <Avatar src="/path/to/your-avatar.png" size={40} style={{ marginBottom: "24px", cursor: "pointer" }} onClick={handleAvatarClick} />
+        <Avatar src={DEFAULT_AVATAR} size={40} style={{ marginBottom: "24px", cursor: "pointer" }} onClick={handleAvatarClick} />
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px" }}>
           <FiMessageCircle size={24} style={{ color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("MessageCircle")} />

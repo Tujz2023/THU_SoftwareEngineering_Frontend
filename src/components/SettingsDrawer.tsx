@@ -3,6 +3,7 @@ import { Drawer, message } from "antd";
 import Cookies from "js-cookie"; // 引入 js-cookie
 import AccountSettings from "./SettingsDrawer/AccountSettings";
 import PrivacySettings from "./SettingsDrawer/PrivacySettings";
+import { DEFAULT_AVATAR  } from "../constants/avatar";
 
 interface SettingsDrawerProps {
   visible: boolean;
@@ -28,6 +29,9 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => 
       .then((res) => res.json())
       .then((res) => {
         if (Number(res.code) === 0) {
+          if (res.avatar == '') {
+            res.avatar = DEFAULT_AVATAR;
+          }
           setUserInfo(res);
         } else {
           messageApi.open({

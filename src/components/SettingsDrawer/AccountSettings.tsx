@@ -1,8 +1,10 @@
-import React, { useState } from "react";
-import { Avatar, Typography, Button, Modal, message, Form, Input } from "antd";
+import React, { useState, useEffect } from 'react';
+import { Avatar, Typography, Button, Modal, Upload, message, Form, Input } from "antd";
 import Cookies from "js-cookie"; // 引入 js-cookie
 import { useRouter } from "next/router";
+import { setEmail } from '../../redux/auth';
 
+const { Dragger } = Upload;
 const { Text } = Typography;
 
 interface AccountSettingsProps {
@@ -14,20 +16,20 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false); // 控制修改信息模态框的显示
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false); // 控制修改密码模态框的显示
+  const [uploading, setUploading] = useState(false);
   const [form] = Form.useForm();
   const [passwordForm] = Form.useForm();
   const router = useRouter();
   const token = Cookies.get("jwtToken");
-
 
   const handleLogout = () => {
     Cookies.remove("jwtToken");
     messageApi.open({
       type: 'success',
       content: "已退出登录"
-    });
+    }).then(() => {router.push('/')});
     // message.success("已退出登录");
-    router.push('/');
+    // router.push('/');
   };
 
   const handleDeleteAccount = () => {
@@ -43,9 +45,9 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
           messageApi.open({
             type: 'success',
             content: res.message || "注销成功"
-          });
+          }).then(() => {router.push('/')});
           // message.success(res.message || "注销成功");
-          router.push('/');
+          // router.push('/');
         } else {
           messageApi.open({
             type: 'error',
@@ -66,16 +68,86 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
       });
   };
 
+  const getBase64 = (img: File, callback: (base64: string) => void): void => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => callback(reader.result as string));
+    reader.readAsDataURL(img);
+  };
+
+  const beforeUpload = (file: File) => {
+    const isJPG = file.type === 'image/jpeg';
+    if (!isJPG) {
+      messageApi.open({
+        type: 'error',
+        content: "oops, 只能上传 JPG 格式的图片"
+      });
+      return false;
+    }
+
+    const isLt2M = file.size / 1024 / 1024 < 2;
+    if (!isLt2M) {
+      messageApi.open({
+        type: 'error',
+        content: "oops, 图片大小需要小于2MB"
+      })
+      return false;
+    }
+
+    setUploading(true);
+    getBase64(file, (base64) => {
+      const base64Length = base64.length - (base64.indexOf(',') + 1);
+      const isBase64Lt2M = base64Length < 2 * 1024 * 1024;
+      if (!isBase64Lt2M) {
+        messageApi.open({
+          type: 'error',
+          content: "oops, 转换后的图片大小超过 2MB"
+        })
+        setUploading(false); // 上传结束，设置上传状态为false
+        return;
+      }
+
+      // 如果所有检查都通过，则设置表单字段的值
+      form.setFieldsValue({ avatar: base64 });
+      setUploading(false); // 上传结束，设置上传状态为false
+      messageApi.open({
+        type: 'success',
+        content: "上传成功"
+      });
+    });
+
+    // const newFile = { ...file, status: 'done'};
+    // handleUpload({ file: newFile });
+    return false;
+  };
+
+  const handleUpload = (info: any) => {
+    // const { file } = info;
+    // if (file.status === 'done') {
+    //   messageApi.open({
+    //     type: 'success',
+    //     content: "上传成功"
+    //   })
+    // }
+  };
+
   const handleEditInfo = (values: any) => {
     const payload = {
       "origin_password": values.origin_password, //用户输入的原密码
-      ...(values.name && { "name": values.name }),
-      ...(values.password && { "password": values.password }),
-      ...(values.email && { "email": values.email }),
-      ...(values.user_info && { "user_info": values.user_info }),
-      ...(values.avatar_path && { "avatar_path": values.avatar_path }),
+      ...((values.name && values.name !== "") && { "name": values.name }),
+      ...((values.password && values.password !== "") && { "password": values.password }),
+      ...((values.email && values.email !== "") && { "email": values.email }),
+      ...((values.user_info && values.user_info !== "") && { "user_info": values.user_info }),
+      ...((values.avatar && values.avatar !== "") && { "avatar": values.avatar }),
     };
-
+    if ((! payload.name) && (! payload.password) && (! payload.email) && (! payload.user_info) && (! payload.avatar))
+    {
+      messageApi.open({
+        type: 'error',
+        content: '您好歹改点东西吧...'
+      });
+      return ;
+    }
+    console.log(payload);
     fetch("/api/account/info", {
       method: "PUT",
       headers: {
@@ -115,7 +187,7 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
     <div style={{ padding: "16px", display: "flex", flexDirection: "column", justifyContent: "space-between", height: "100%" }}>
       <div>
         <div style={{ textAlign: "center", marginBottom: "24px" }}>
-          <Avatar src={userInfo.avatar_path} size={80} />
+          <Avatar src={userInfo.avatar} size={80} />
         </div>
         <div style={{ marginBottom: "16px", textAlign: "center" }}>
           <Text strong style={{ fontSize: "20px", display: "block" }}>{userInfo.name}</Text>
@@ -136,10 +208,13 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
       </div>
 
       <div style={{ textAlign: "center" }}>
-        <Button type="primary" style={{ marginBottom: "8px", width: "100%" }} onClick={() => setIsEditModalVisible(true)}>
+        <Button type="primary" style={{ marginBottom: "8px", width: "100%" }} onClick={() => {
+            setIsEditModalVisible(true); 
+            form.resetFields(); 
+          }}>
           修改信息
         </Button>
-        <Button type="primary" style={{ marginBottom: "8px", width: "100%" }} onClick={() => setIsPasswordModalVisible(true)}>
+        <Button type="primary" style={{ marginBottom: "8px", width: "100%" }} onClick={() => {setIsPasswordModalVisible(true); passwordForm.resetFields();}}>
           修改密码
         </Button>
         <Button type="primary" danger style={{ marginBottom: "8px", width: "100%" }} onClick={handleLogout}>
@@ -170,21 +245,28 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
         <Form
           form={form}
           layout="vertical"
-          initialValues={{
-            avatar_path: userInfo.avatar_path,
-            name: userInfo.name,
-            email: userInfo.email,
-            user_info: userInfo.user_info,
+          onFinish={(values) => {
+            handleEditInfo(values);
           }}
-          onFinish={(values) => handleEditInfo(values)}
         >
-          <Form.Item label="头像链接" name="avatar_path">
-            <Input placeholder="请输入头像链接" />
+          <Form.Item label="头像链接" name="avatar">
+            {/* <input type="file" onChange={handleFileChange} /> */}
+            {/* <Input placeholder="请输入头像链接" /> */}
+            <Upload
+              name="avatar"
+              listType="picture-card"
+              className="avatar-uploader"
+              showUploadList={false}
+              beforeUpload={beforeUpload}
+              onChange={handleUpload}
+            >
+              {form.getFieldValue('avatar') ? <img src={form.getFieldValue('avatar')} alt="avatar" style={{ width: '100%' }} /> : <div>{uploading ? '上传中...' : '点击上传(只能上传小于2M的jpg形式图片)'}</div>}
+            </Upload>
           </Form.Item>
-          <Form.Item label="用户名" name="name" rules={[{ required: true, message: "用户名不能为空" }]}>
+          <Form.Item label="用户名" name="name">
             <Input placeholder="请输入用户名" />
           </Form.Item>
-          <Form.Item label="邮箱" name="email" rules={[{ required: true, type: "email", message: "请输入有效的邮箱地址" }]}>
+          <Form.Item label="邮箱" name="email">
             <Input placeholder="请输入邮箱" />
           </Form.Item>
           <Form.Item label="用户信息" name="user_info">
@@ -215,7 +297,7 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
         <Form
           form={passwordForm}
           layout="vertical"
-          onFinish={(values) => handleEditInfo({ ...values, name: userInfo.name, email: userInfo.email, user_info: userInfo.user_info, avatar_path: userInfo.avatar_path })}
+          onFinish={(values) => handleEditInfo({ ...values, name: userInfo.name, email: userInfo.email, user_info: userInfo.user_info, avatar: userInfo.avatar })}
         >
           <Form.Item label="当前密码" name="origin_password" rules={[{ required: true, message: "请输入当前密码" }]}>
             <Input.Password placeholder="请输入当前密码" />

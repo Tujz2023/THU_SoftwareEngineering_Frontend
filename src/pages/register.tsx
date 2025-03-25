@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { Typography, Card, Input, Button, Alert } from 'antd';
 import { motion } from 'framer-motion'; // 引入 framer-motion
@@ -12,7 +12,27 @@ const RegisterPage = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [showAlert, setShowAlert] = useState(false);
   const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+      // 检查 cookies 中是否已存在 jwtToken
+      const jwtToken = Cookies.get('jwtToken');
+      if (jwtToken) {
+        setIsAuthenticated(true);
+        router.push('/chat').then(() => setShowAlert(true));
+      } else {
+        setIsAuthenticated(false);
+      }
+    }, [router]);
+  
+  useEffect(() => {
+    if (showAlert) {
+      alert('您已登录，请登出后再注册新的账号，确认后将返回聊天界面');
+      setShowAlert(false);
+    }
+  }, [showAlert]);
 
   const handleRegister = () => {
     if (password !== confirmPassword) {
@@ -49,6 +69,10 @@ const RegisterPage = () => {
     router.push('/');
   };
 
+  if (isAuthenticated) {
+    return <p>您已登录，正在跳转...</p>;
+  }
+  
   return (
     <motion.div
       className="h-screen w-screen flex items-center justify-center bg-gradient-to-br from-green-400 to-blue-500"
