@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Avatar, Typography, Button, Modal, Upload, message, Form, Input } from "antd";
 import Cookies from "js-cookie"; // 引入 js-cookie
 import { useRouter } from "next/router";
-import { setEmail } from '../../redux/auth';
 
-const { Dragger } = Upload;
 const { Text } = Typography;
 
 interface AccountSettingsProps {

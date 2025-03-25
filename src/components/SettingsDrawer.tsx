@@ -29,7 +29,7 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => 
       .then((res) => res.json())
       .then((res) => {
         if (Number(res.code) === 0) {
-          if (res.avatar == '') {
+          if (res.avatar === '') {
             res.avatar = DEFAULT_AVATAR;
           }
           setUserInfo(res);
