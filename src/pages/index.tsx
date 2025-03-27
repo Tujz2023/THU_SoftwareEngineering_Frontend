@@ -5,9 +5,10 @@ import { Typography, Card, Input, Button, message } from 'antd';
 import { motion } from 'framer-motion'; // 引入 framer-motion
 import Cookies from 'js-cookie'; // 引入 js-cookie 库
 
-const { Title, Text } = Typography;
+const { Title} = Typography;
 
 const WelcomePage = () => {
+  const [messageApi, contextHolder] = message.useMessage();
   const [userEmail, setUserEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
@@ -48,10 +49,16 @@ const WelcomePage = () => {
         if (Number(res.code) === 0) {
           // 将 JWT Token 存储到 Cookie 中
           Cookies.set('jwtToken', res.token, { expires: 7 }); // 设置有效期为 7 天
-          alert(LOGIN_SUCCESS_PREFIX + userEmail);
+          messageApi.open({
+          type: 'success',
+          content: LOGIN_SUCCESS_PREFIX + userEmail
+        });
           router.push('/chat');
         } else {
-          alert(LOGIN_FAILED + res.info)
+          messageApi.open({
+          type: 'error',
+          content: LOGIN_FAILED + res.info
+        });
         }
       })
       .catch((err) => alert(FAILURE_PREFIX + err));
@@ -67,10 +74,16 @@ const WelcomePage = () => {
 
   return (
       <motion.div
-        className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-400 to-blue-500"
+        className="h-screen w-screen flex flex-col items-center justify-center"
         initial={{ opacity: 0, y: -50 }} // 初始状态
         animate={{ opacity: 1, y: 0 }} // 动画结束状态
         transition={{ duration: 1 }} // 动画持续时间
+      style={{
+        backgroundImage: 'url("/login.png")', // 替换为你的背景图像路径
+        backgroundSize: 'cover', // 确保图像覆盖整个背景
+        backgroundPosition: 'center', // 居中显示背景图像
+        backgroundRepeat: 'no-repeat', // 防止背景图像重复
+      }}
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
@@ -103,6 +116,8 @@ const WelcomePage = () => {
               borderRadius: '1.5rem',
               boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
               textAlign: 'center',
+              backgroundColor: 'rgba(255, 255, 255, 0.8)', // 设置背景颜色并调整透明度
+              opacity: 0.9, // 设置整体透明度
             }}
           >
             <Input

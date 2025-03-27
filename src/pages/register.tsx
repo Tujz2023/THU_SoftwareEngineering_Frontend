@@ -1,16 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { Typography, Card, Input, Button, Alert } from 'antd';
+import { Typography, Card, Input, Button, Alert, message } from 'antd';
 import { motion } from 'framer-motion'; // 引入 framer-motion
 import Cookies from 'js-cookie'; // 引入 js-cookie 库
 
 const { Title, Text } = Typography;
 
 const RegisterPage = () => {
+  const [messageApi, contextHolder] = message.useMessage();
   const [username, setUsername] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');//确认密码
+  const [verifyCode, setVerifyCode] = useState(''); // 用户输入的验证码
+  const [savedVerifyCode, setSavedVerifyCode] = useState(''); // 保存的验证码
+  const [verifyCodeExpiry, setVerifyCodeExpiry] = useState<Date | null>(null); // 验证码有效期
+  const [isSendingCode, setIsSendingCode] = useState(false); // 是否正在发送验证码
+  const [countdown, setCountdown] = useState(0); // 倒计时
   const [errorMessage, setErrorMessage] = useState('');
   const [showAlert, setShowAlert] = useState(false);
   const router = useRouter();
@@ -34,12 +40,83 @@ const RegisterPage = () => {
     }
   }, [showAlert]);
 
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000); // 每秒减少 1
+      return () => clearTimeout(timer); // 清除定时器
+    } else {
+      setIsSendingCode(false); // 倒计时结束后启用按钮
+    }
+  }, [countdown]);
+
+  const handleSendVerifyCode = () => {
+    if (!userEmail) {
+      messageApi.open({
+          type: 'error',
+          content: "请先填写邮箱"
+        });
+      return;
+    }
+
+    setIsSendingCode(true); // 禁用按钮
+    setCountdown(60); // 设置倒计时为 60 秒
+    fetch('api/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email: userEmail }),
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        if (res.code === 0) {
+          setSavedVerifyCode(res.verify_code); // 保存加密后的验证码
+          setVerifyCodeExpiry(new Date(Date.now() + 5 * 60 * 1000)); // 设置验证码有效期为5分钟
+          messageApi.open({
+          type: 'success',
+          content: "验证码发送成功，5分钟内有效"
+        });
+        } else {
+          messageApi.open({
+          type: 'error',
+          content: res.info || "验证码发送失败，请稍后重试"
+        });
+          setCountdown(0); // 如果发送失败，重置倒计时
+          setIsSendingCode(false); // 启用按钮
+        }
+      })
+      .catch(() => {
+        messageApi.open({
+          type: 'error',
+          content: "网络错误，请稍后重试"
+        });
+        setCountdown(0); // 如果发送失败，重置倒计时
+        setIsSendingCode(false); // 启用按钮
+      });
+  };
+
   const handleRegister = () => {
+    
+    if (!savedVerifyCode || !verifyCodeExpiry || new Date() > verifyCodeExpiry) {
+      messageApi.open({
+          type: 'error',
+          content: "验证码已失效，请重新获取"
+      });
+      return;
+    }
+
+    if (verifyCode !== savedVerifyCode) {
+      messageApi.open({
+          type: 'error',
+          content: "验证码不正确"
+      });
+      return;
+    }
+
     if (password !== confirmPassword) {
       setErrorMessage('密码和确认密码不匹配');
       return;
     }
-
     fetch(`/api/account/reg`, {
       method: 'POST',
       headers: {
@@ -56,7 +133,11 @@ const RegisterPage = () => {
         if (Number(res.code) === 0) {
           // 注册成功后将 JWT Token 存储到 Cookie 中
           Cookies.set('jwtToken', res.token, { expires: 7 }); // 设置有效期为 7 天
-          alert('注册成功，已自动登录');
+          messageApi.open({
+          type: 'success',
+          content: "注册成功，已自动登录"
+          });
+          
           router.push('/chat');
         } else {
           setErrorMessage(res.info);
@@ -74,14 +155,21 @@ const RegisterPage = () => {
   }
   
   return (
+    <>
+      {contextHolder}
     <motion.div
-      className="h-screen w-screen flex items-center justify-center bg-gradient-to-br from-green-400 to-blue-500"
+      className="h-screen w-screen flex items-center justify-center"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 1 }}
-      style={{ position: 'relative', padding: '50px 20px' }}
+      style={{
+        backgroundImage: 'url("/register.jpg")', // 替换为你的背景图像路径
+        backgroundSize: 'cover', // 确保图像覆盖整个背景
+        backgroundPosition: 'center', // 居中显示背景图像
+        backgroundRepeat: 'no-repeat', // 防止背景图像重复
+      }}
     >
-      {/* 注册组件 */}
+          {/* 注册组件 */}
       <motion.div
         className="flex flex-col items-center"
         initial={{ y: -50, opacity: 0 }}
@@ -108,6 +196,8 @@ const RegisterPage = () => {
             borderRadius: '1.5rem',
             boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
             textAlign: 'center',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)', // 设置背景颜色并调整透明度
+            opacity: 0.9, // 设置整体透明度
           }}
         >
           {errorMessage && (
@@ -159,13 +249,38 @@ const RegisterPage = () => {
             placeholder="确认密码"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="mb-6"
+            className="mb-4"
             style={{
               padding: '0.75rem',
               borderRadius: '1rem',
-              marginBottom: '1.5rem',
+              marginBottom: '1rem',
             }}
           />
+<div className="flex items-center mb-4">
+            <Input
+              type="text"
+              placeholder="验证码"
+              value={verifyCode}
+              onChange={(e) => setVerifyCode(e.target.value)}
+              style={{
+                flex: 1,
+                marginRight: '0.5rem',
+                padding: '0.75rem',
+                borderRadius: '1rem',
+              }}
+            />
+            <Button
+              type="primary"
+              onClick={handleSendVerifyCode}
+              disabled={isSendingCode}
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '1rem',
+              }}
+            >
+              {isSendingCode ? `已发送(${countdown}s)` : '发送验证码'}
+            </Button>
+          </div>
 
           <Button
             type="primary"
@@ -219,6 +334,8 @@ const RegisterPage = () => {
             width: '20rem',
             textAlign: 'left',
             color: '#4b5563',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)', // 设置背景颜色并调整透明度
+            opacity: 0.9, // 设置整体透明度
           }}
         >
           <Title level={4} style={{ color: '#16a34a', marginBottom: '0.5rem' }}>
@@ -232,7 +349,8 @@ const RegisterPage = () => {
           </Text>
         </Card>
       </motion.div>
-    </motion.div>
+      </motion.div>
+      </>
   );
 };
 
