@@ -14,7 +14,7 @@ const RegisterPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');//确认密码
   const [verifyCode, setVerifyCode] = useState(''); // 用户输入的验证码
   const [savedVerifyCode, setSavedVerifyCode] = useState(''); // 保存的验证码
-  const [verifyCodeExpiry, setVerifyCodeExpiry] = useState<Date | null>(null); // 验证码有效期
+  const [verifyCodeExpiry, setVerifyCodeExpiry] = useState<Date | undefined>(undefined); // 验证码有效期
   const [isSendingCode, setIsSendingCode] = useState(false); // 是否正在发送验证码
   const [countdown, setCountdown] = useState(0); // 倒计时
   const [errorMessage, setErrorMessage] = useState('');
