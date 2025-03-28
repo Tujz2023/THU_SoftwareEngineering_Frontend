@@ -78,19 +78,6 @@ const ChatPage = () => {
       setShowAlert(false);
     }
   }, [showAlert]);
-  // useEffect(() => {
-  //   if (!token) {
-  //     router.push("/").then(() => setShowAlert(true));
-  //   }
-  // }, [router, token]);
-
-  // useEffect(() => {
-  //   if (showAlert) {
-  //     // 如果没有 Token，弹出提示
-  //     alert('请先登录!');
-  //     setShowAlert(false);
-  //   }
-  // }, [showAlert]);
 
   const handleSendMessage = () => {
     if (!input.trim()) return;

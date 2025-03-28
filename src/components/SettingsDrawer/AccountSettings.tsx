@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Avatar, Typography, Button, Modal, Upload, message, Form, Input } from "antd";
 import Cookies from "js-cookie"; // 引入 js-cookie
 import { useRouter } from "next/router";
+import { encrypt, decrypt } from '../../utils/crypto';
 
 const { Text } = Typography;
 
@@ -24,10 +25,8 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
     Cookies.remove("jwtToken");
     messageApi.open({
       type: 'success',
-      content: "已退出登录"
+      content: "已退出登录，正在跳转至登陆界面..."
     }).then(() => {router.push('/')});
-    // message.success("已退出登录");
-    // router.push('/');
   };
 
   const handleDeleteAccount = () => {
@@ -40,12 +39,11 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
       .then((res) => res.json())
       .then((res) => {
         if (res.code === 0) {
+          Cookies.remove("jwtToken");
           messageApi.open({
             type: 'success',
-            content: res.message || "注销成功"
+            content: res.message || "注销成功，正在跳转至聊天界面..."
           }).then(() => {router.push('/')});
-          // message.success(res.message || "注销成功");
-          // router.push('/');
         } else {
           messageApi.open({
             type: 'error',
@@ -128,11 +126,11 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
     // }
   };
 
-  const handleEditInfo = (values: any) => {
+  const handleEditInfo = async (values: any) => {
     const payload = {
-      "origin_password": values.origin_password, //用户输入的原密码
+      "origin_password": await encrypt(values.origin_password), //用户输入的原密码
       ...((values.name && values.name !== "") && { "name": values.name }),
-      ...((values.password && values.password !== "") && { "password": values.password }),
+      ...((values.password && values.password !== "") && { "password": await encrypt(values.password) }),
       ...((values.email && values.email !== "") && { "email": values.email }),
       ...((values.user_info && values.user_info !== "") && { "user_info": values.user_info }),
       ...((values.avatar && values.avatar !== "") && { "avatar": values.avatar }),
@@ -145,8 +143,7 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
       });
       return ;
     }
-    console.log(payload);
-    fetch("/api/account/info", {
+    await fetch("/api/account/info", {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",

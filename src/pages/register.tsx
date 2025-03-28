@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { Typography, Card, Input, Button, Alert, message } from 'antd';
 import { motion } from 'framer-motion'; // 引入 framer-motion
 import Cookies from 'js-cookie'; // 引入 js-cookie 库
+import { encrypt, decrypt } from '../utils/crypto';
 
 const { Title, Text } = Typography;
 
@@ -32,13 +33,14 @@ const RegisterPage = () => {
         setIsAuthenticated(false);
       }
     }, [router]);
+
+    useEffect(() => {
+      if (showAlert) {
+        alert('您已登录，确认后将返回聊天界面');
+        setShowAlert(false);
+      }
+    }, [showAlert]);
   
-  useEffect(() => {
-    if (showAlert) {
-      alert('您已登录，请登出后再注册新的账号，确认后将返回聊天界面');
-      setShowAlert(false);
-    }
-  }, [showAlert]);
 
   useEffect(() => {
     if (countdown > 0) {
@@ -49,7 +51,7 @@ const RegisterPage = () => {
     }
   }, [countdown]);
 
-  const handleSendVerifyCode = () => {
+  const handleSendVerifyCode = async () => {
     if (!userEmail) {
       messageApi.open({
           type: 'error',
@@ -60,7 +62,7 @@ const RegisterPage = () => {
 
     setIsSendingCode(true); // 禁用按钮
     setCountdown(60); // 设置倒计时为 60 秒
-    fetch('api/verify', {
+    await fetch('api/verify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -68,9 +70,11 @@ const RegisterPage = () => {
       body: JSON.stringify({ email: userEmail }),
     })
       .then((res) => res.json())
-      .then((res) => {
+      .then(async (res) => {
         if (res.code === 0) {
-          setSavedVerifyCode(res.verify_code); // 保存加密后的验证码
+          const decrypted_code = await decrypt(res.verify_code);
+          console.log(decrypted_code);
+          setSavedVerifyCode(decrypted_code); // 保存加密后的验证码
           setVerifyCodeExpiry(new Date(Date.now() + 5 * 60 * 1000)); // 设置验证码有效期为5分钟
           messageApi.open({
           type: 'success',
@@ -90,17 +94,17 @@ const RegisterPage = () => {
           type: 'error',
           content: "网络错误，请稍后重试"
         });
-        setCountdown(0); // 如果发送失败，重置倒计时
-        setIsSendingCode(false); // 启用按钮
+        // setCountdown(0); // 如果发送失败，重置倒计时
+        // setIsSendingCode(false); // 启用按钮
       });
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     
     if (!savedVerifyCode || !verifyCodeExpiry || new Date() > verifyCodeExpiry) {
       messageApi.open({
           type: 'error',
-          content: "验证码已失效，请重新获取"
+          content: "验证码已失效或还未生成，请重新获取"
       });
       return;
     }
@@ -117,15 +121,17 @@ const RegisterPage = () => {
       setErrorMessage('密码和确认密码不匹配');
       return;
     }
-    fetch(`/api/account/reg`, {
+
+    const encrypt_password = await encrypt(password);
+    await fetch(`/api/account/reg`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        email: userEmail,
-        password,
-        name: username,
+        "email": userEmail,
+        "password": encrypt_password,
+        "name": username,
       }),
     })
       .then((res) => res.json())
@@ -135,10 +141,8 @@ const RegisterPage = () => {
           Cookies.set('jwtToken', res.token, { expires: 7 }); // 设置有效期为 7 天
           messageApi.open({
           type: 'success',
-          content: "注册成功，已自动登录"
-          });
-          
-          router.push('/chat');
+          content: "注册成功，自动登录中..."
+          }).then(() => {router.push('/chat')});
         } else {
           setErrorMessage(res.info);
         }
@@ -345,7 +349,7 @@ const RegisterPage = () => {
             ✅ 用户名可包含任何 UTF-8 字符，长度 ≤ 20
           </Text>
           <Text style={{ display: 'block' }}>
-            ✅ 密码只能由字母、数字及下划线组成，长度 ≤ 20
+            ✅ 密码只能由字母、数字及下划线组成，长度 ≤ 12
           </Text>
         </Card>
       </motion.div>

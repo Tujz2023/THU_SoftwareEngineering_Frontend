@@ -4,6 +4,7 @@ import { FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from '../constants
 import { Typography, Card, Input, Button, message } from 'antd';
 import { motion } from 'framer-motion'; // 引入 framer-motion
 import Cookies from 'js-cookie'; // 引入 js-cookie 库
+import { encrypt, decrypt } from '../utils/crypto';
 
 const { Title} = Typography;
 
@@ -33,15 +34,17 @@ const WelcomePage = () => {
     }
   }, [showAlert]);
 
-  const handleLogin = () => {
-    fetch(`/api/account/login`, {
+  const handleLogin = async () => {
+
+    const encrypt_password = await encrypt(password);
+    await fetch(`/api/account/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         "email": userEmail,
-        password
+        "password": encrypt_password
       }),
     })
       .then((res) => res.json())
@@ -51,9 +54,8 @@ const WelcomePage = () => {
           Cookies.set('jwtToken', res.token, { expires: 7 }); // 设置有效期为 7 天
           messageApi.open({
           type: 'success',
-          content: LOGIN_SUCCESS_PREFIX + userEmail
-        });
-          router.push('/chat');
+          content: LOGIN_SUCCESS_PREFIX + userEmail + " 正在跳转至聊天界面..."
+        }).then(() => {router.push('/chat')});
         } else {
           messageApi.open({
           type: 'error',
@@ -73,11 +75,16 @@ const WelcomePage = () => {
   }
 
   return (
+    <>
+      {contextHolder}
       <motion.div
         className="h-screen w-screen flex flex-col items-center justify-center"
-        initial={{ opacity: 0, y: -50 }} // 初始状态
-        animate={{ opacity: 1, y: 0 }} // 动画结束状态
-        transition={{ duration: 1 }} // 动画持续时间
+        // initial={{ opacity: 0, y: -50 }} // 初始状态
+        // animate={{ opacity: 1, y: 0 }} // 动画结束状态
+        // transition={{ duration: 1 }} // 动画持续时间
+        initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 1 }}
       style={{
         backgroundImage: 'url("/login.png")', // 替换为你的背景图像路径
         backgroundSize: 'cover', // 确保图像覆盖整个背景
@@ -97,7 +104,7 @@ const WelcomePage = () => {
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
               color: 'transparent',
-              backgroundImage: 'linear-gradient(to right, #ec4899, #93c5fd)',
+              backgroundImage: 'linear-gradient(to right,rgb(64, 225, 102), #93c5fd)',
             }}
           >
             🚀 欢迎来到即时通讯系统 🎉
@@ -171,6 +178,7 @@ const WelcomePage = () => {
           </Card>
         </motion.div>
       </motion.div>
+    </>
   );
 };
 
