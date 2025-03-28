@@ -45,5 +45,5 @@ export const decrypt = async (encryptedText: string): Promise<string> => {
     );
 
     // **移除填充的 0**
-    return new TextDecoder().decode(decryptedBuffer).replace(/\x00+$/, '');
+    return new TextDecoder().decode(decryptedBuffer).replace(/\0+$/, '');
 };

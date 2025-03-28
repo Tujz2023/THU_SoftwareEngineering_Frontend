@@ -74,6 +74,8 @@ const WelcomePage = () => {
     return <p>您已登录，正在跳转...</p>;
   }
 
+  // console.log(encrypt("abc"));
+  // console.log(decrypt("U5d2yOCZBHTULtPZilkoaA=="));
   return (
     <>
       {contextHolder}
