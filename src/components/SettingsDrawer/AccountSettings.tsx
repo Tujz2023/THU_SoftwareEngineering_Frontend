@@ -25,7 +25,7 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
     Cookies.remove("jwtToken");
     messageApi.open({
       type: 'success',
-      content: "已退出登录，正在跳转至登陆界面..."
+      content: "已退出登录，正在跳转至登录界面..."
     }).then(() => {router.push('/')});
   };
 

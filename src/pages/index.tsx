@@ -51,7 +51,7 @@ const WelcomePage = () => {
       .then((res) => {
         if (Number(res.code) === 0) {
           // 将 JWT Token 存储到 Cookie 中
-          Cookies.set('jwtToken', res.token, { expires: 7 }); // 设置有效期为 7 天
+          Cookies.set('jwtToken', res.token, { expires: 3 }); // 设置有效期为 3 天
           messageApi.open({
           type: 'success',
           content: LOGIN_SUCCESS_PREFIX + userEmail + " 正在跳转至聊天界面..."

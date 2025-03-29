@@ -4,6 +4,7 @@ import Cookies from "js-cookie"; // 引入 js-cookie
 import AccountSettings from "./SettingsDrawer/AccountSettings";
 import PrivacySettings from "./SettingsDrawer/PrivacySettings";
 import { DEFAULT_AVATAR  } from "../constants/avatar";
+import { useRouter } from "next/router";
 
 interface SettingsDrawerProps {
   visible: boolean;
@@ -14,6 +15,7 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => 
   const [messageApi, contextHolder] = message.useMessage();
   const [activeMenu, setActiveMenu] = useState("账号设置");
   const [userInfo, setUserInfo] = useState<any>(undefined);
+  const router = useRouter();
 
   // 从 Cookie 中获取 JWT Token
   const token = Cookies.get("jwtToken");
@@ -33,7 +35,14 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => 
             res.avatar = DEFAULT_AVATAR;
           }
           setUserInfo(res);
-        } else {
+        } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+          Cookies.remove("jwtToken");
+          messageApi.open({
+            type: 'error',
+            content: "JWT token无效或过期，正在跳转回登录界面..."
+          }).then(() => {router.push('/')});
+        }
+          else {
           messageApi.open({
             type: 'error',
             content: res.info || "获取用户信息失败",

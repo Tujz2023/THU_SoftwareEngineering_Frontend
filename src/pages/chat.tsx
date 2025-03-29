@@ -74,7 +74,7 @@ const ChatPage = () => {
     
   useEffect(() => {
     if (showAlert) {
-      alert('请先登录!');
+      alert('Cookies不存在或已经失效，请先登录!');
       setShowAlert(false);
     }
   }, [showAlert]);
