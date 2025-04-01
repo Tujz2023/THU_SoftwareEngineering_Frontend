@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Drawer, message } from "antd";
-import Cookies from "js-cookie"; // 引入 js-cookie
+import Cookies from "js-cookie";
 import AccountSettings from "./SettingsDrawer/AccountSettings";
 import PrivacySettings from "./SettingsDrawer/PrivacySettings";
-import { DEFAULT_AVATAR  } from "../constants/avatar";
+import { DEFAULT_AVATAR } from "../constants/avatar";
 import { useRouter } from "next/router";
 
 interface SettingsDrawerProps {
@@ -17,7 +17,6 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => 
   const [userInfo, setUserInfo] = useState<any>(undefined);
   const router = useRouter();
 
-  // 从 Cookie 中获取 JWT Token
   const token = Cookies.get("jwtToken");
 
   const fetchUserInfo = () => {
@@ -31,30 +30,30 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => 
       .then((res) => res.json())
       .then((res) => {
         if (Number(res.code) === 0) {
-          if (res.avatar === '') {
+          if (res.avatar === "") {
             res.avatar = DEFAULT_AVATAR;
           }
           setUserInfo(res);
         } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
           Cookies.remove("jwtToken");
           messageApi.open({
-            type: 'error',
-            content: "JWT token无效或过期，正在跳转回登录界面..."
-          }).then(() => {router.push('/')});
-        }
-          else {
+            type: "error",
+            content: "JWT token无效或过期，正在跳转回登录界面...",
+          }).then(() => {
+            router.push("/");
+          });
+        } else {
           messageApi.open({
-            type: 'error',
+            type: "error",
             content: res.info || "获取用户信息失败",
           });
         }
       })
       .catch((err) => {
         messageApi.open({
-          type: 'error',
-          content: `网络错误，请稍后重试: ${err}`
+          type: "error",
+          content: `网络错误，请稍后重试: ${err}`,
         });
-        // message.error(`网络错误，请稍后重试: ${err}`);
       });
   };
 
@@ -77,49 +76,81 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => 
 
   return (
     <>
-    {contextHolder}
-    <Drawer
-      title="设置"
-      placement="left"
-      onClose={onClose}
-      open={visible}
-      width="38vw"
-    >
-      <div style={{ display: "flex", height: "100%" }}>
-        {/* 左侧菜单 */}
-        <div
-          style={{
-            width: "120px",
-            borderRight: "1px solid #f0f0f0",
-            padding: "16px 0",
-          }}
-        >
+      {contextHolder}
+      <Drawer
+        title={<span style={{ color: "#4caf50", fontWeight: "bold" }}>设置</span>}
+        placement="left"
+        onClose={onClose}
+        open={visible}
+        width="38vw"
+        bodyStyle={{
+          background: "linear-gradient(135deg, #f0f8ff, #e6f7ff)",
+          borderRadius: "16px 0 0 16px",
+          padding: "0",
+        }}
+        headerStyle={{
+          background: "#4caf50",
+          color: "#fff",
+          borderRadius: "16px 0 0 0",
+        }}
+      >
+        <div style={{ display: "flex", height: "100%" }}>
+          {/* 左侧菜单 */}
           <div
             style={{
-              padding: "8px 16px",
-              cursor: "pointer",
-              background: activeMenu === "账号设置" ? "#f0f0f0" : "transparent",
+              width: "120px",
+              borderRight: "1px solid #d9d9d9",
+              padding: "16px 0",
+              background: "#f7f7f7",
+              borderRadius: "16px 0 0 16px",
             }}
-            onClick={() => setActiveMenu("账号设置")}
           >
-            账号设置
+            <div
+              style={{
+                padding: "12px 16px",
+                cursor: "pointer",
+                borderRadius: "8px",
+                margin: "8px",
+                background: activeMenu === "账号设置" ? "#4caf50" : "transparent",
+                color: activeMenu === "账号设置" ? "#fff" : "#000",
+                fontWeight: activeMenu === "账号设置" ? "bold" : "normal",
+                textAlign: "center",
+              }}
+              onClick={() => setActiveMenu("账号设置")}
+            >
+              账号设置
+            </div>
+            <div
+              style={{
+                padding: "12px 16px",
+                cursor: "pointer",
+                borderRadius: "8px",
+                margin: "8px",
+                background: activeMenu === "隐私设置" ? "#4caf50" : "transparent",
+                color: activeMenu === "隐私设置" ? "#fff" : "#000",
+                fontWeight: activeMenu === "隐私设置" ? "bold" : "normal",
+                textAlign: "center",
+              }}
+              onClick={() => setActiveMenu("隐私设置")}
+            >
+              隐私设置
+            </div>
           </div>
+
+          {/* 右侧内容 */}
           <div
             style={{
-              padding: "8px 16px",
-              cursor: "pointer",
-              background: activeMenu === "隐私设置" ? "#f0f0f0" : "transparent",
+              flex: 1,
+              padding: "16px",
+              background: "#fff",
+              borderRadius: "0 16px 16px 0",
+              boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
             }}
-            onClick={() => setActiveMenu("隐私设置")}
           >
-            隐私设置
+            {renderContent()}
           </div>
         </div>
-
-        {/* 右侧内容 */}
-        <div style={{ flex: 1, padding: "16px" }}>{renderContent()}</div>
-      </div>
-    </Drawer>
+      </Drawer>
     </>
   );
 };

@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router"; // 引入 useRouter
 import Cookies from "js-cookie"; // 引入 js-cookie
-import { FiSettings, FiImage, FiCamera, FiSmile, FiMessageCircle, FiUsers, FiMoreHorizontal, FiSliders } from "react-icons/fi";
 import { Input, Button, Layout, List, Avatar, Typography, message } from "antd";
+import { MessageOutlined, TeamOutlined, SettingOutlined, PictureOutlined, SmileOutlined, MoreOutlined } from "@ant-design/icons";
 import 'antd/dist/reset.css';
 import SettingsDrawer from "../components/SettingsDrawer";
-import {DEFAULT_AVATAR} from "../constants/avatar";
+import FriendsListDrawer from "../components/FriendsListDrawer";
+import { DEFAULT_AVATAR } from "../constants/avatar";
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -53,6 +54,7 @@ const ChatPage = () => {
   const [messages, setMessages] = useState<{ [key: number]: Message[] }>(initialMessages);
   const [input, setInput] = useState("");
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
+  const [isFriendsDrawerVisible, setIsFriendsDrawerVisible] = useState(false); // 控制好友列表抽屉的显示
   const router = useRouter(); // 初始化 useRouter
   const [showAlert, setShowAlert] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -96,6 +98,8 @@ const ChatPage = () => {
   const handleIconClick = (iconName: string) => {
     if (iconName === "Settings") {
       setIsDrawerVisible(true); // 打开设置抽屉
+    } else if (iconName === "Users") {
+      setIsFriendsDrawerVisible(true); // 打开好友列表抽屉
     } else {
       console.log(`${iconName} icon clicked`);
     }
@@ -121,90 +125,107 @@ const ChatPage = () => {
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              justifyContent: "space-between", // 调整布局
+              justifyContent: "space-between",
               padding: "16px 0",
             }}
           >
             {/* User Avatar */}
-        <Avatar src={DEFAULT_AVATAR} size={40} style={{ marginBottom: "24px", cursor: "pointer" }} onClick={handleAvatarClick} />
+            <Avatar src={DEFAULT_AVATAR} size={40} style={{ marginBottom: "24px", cursor: "pointer" }} onClick={handleAvatarClick} />
 
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px" }}>
-          <FiMessageCircle size={24} style={{ color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("MessageCircle")} />
-          <FiUsers size={24} style={{ color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Users")} />
-          <FiSettings size={24} style={{ color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Settings")} />
-        </div>
-      </Sider>
-
-      {/* Contact List */}
-      <Sider width={300} style={{ background: "#f0f0f0", borderRight: "1px solid #d9d9d9" }}>
-        <div style={{ padding: "16px" }}>
-          <Input.Search
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ marginBottom: "16px" }}
-          />
-          <List
-            itemLayout="horizontal"
-            dataSource={contacts.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))}
-            renderItem={(contact) => (
-              <List.Item onClick={() => handleContactClick(contact.id)} style={{ cursor: "pointer", background: "#f0f0f0" }}>
-                <List.Item.Meta
-                  avatar={<Avatar src={contact.avatar} />}
-                  title={contact.name}
-                  description={contact.status === "online" ? "🟢 Online" : `🔴 Left ${contact.lastSeen}`}
-                />
-              </List.Item>
-            )}
-          />
-        </div>
-      </Sider>
-
-      <Layout>
-        {/* Header */}
-        <Header style={{ background: "#fff", padding: "0 16px", borderBottom: "1px solid #f0f0f0", display: "flex", alignItems: "center", height: "80px" }}>
-          <Avatar src={contacts.find((c) => c.id === selectedContactId)?.avatar} size="large" />
-          <div style={{ marginLeft: "16px", display: "flex", flexDirection: "column" }}>
-            <Text strong>{contacts.find((c) => c.id === selectedContactId)?.name}</Text>
-            <Text type="secondary">
-              {contacts.find((c) => c.id === selectedContactId)?.status === "online" ? "🟢 Online" : `🔴 Last seen: ${contacts.find((c) => c.id === selectedContactId)?.lastSeen}`}
-            </Text>
-          </div>
-          <div style={{ marginLeft: "auto", display: "flex", gap: "16px" }}>
-            <FiImage size={22} style={{ cursor: "pointer" }} onClick={() => handleIconClick("Image")} />
-            <FiSmile size={22} style={{ cursor: "pointer" }} onClick={() => handleIconClick("Smile")} />
-            <FiMoreHorizontal size={22} style={{ cursor: "pointer" }} onClick={() => handleIconClick("MoreHorizontal")} />
-          </div>
-        </Header>
-
-        {/* Chat Content */}
-        <Content style={{ padding: "16px", background: "#fff", overflowY: "auto" }}>
-          {messages[selectedContactId!]?.map((msg, index) => (
-            <div key={index} style={{ display: "flex", justifyContent: msg.sender === "me" ? "flex-end" : "flex-start", marginBottom: "16px" }}>
-              <div style={{ maxWidth: "60%", padding: "12px", borderRadius: "8px", background: msg.sender === "me" ? "#8A2BE2" : "#f0f0f0", color: msg.sender === "me" ? "#fff" : "#000" }}>
-                <p style={{ margin: 0 }}>{msg.text}</p>
-                <Text type="secondary" style={{ fontSize: "12px" }}>{msg.time}</Text>
-              </div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px" }}>
+              <MessageOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("MessageCircle")} />
+              <TeamOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Users")} />
+              <SettingOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Settings")} />
             </div>
-          ))}
-        </Content>
+          </Sider>
 
-        {/* Message Input */}
-        <div style={{ padding: "16px", borderTop: "1px solid #f0f0f0", background: "#fff", display: "flex" }}>
-          <Input
-            placeholder="Enter text here..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-            style={{ flex: 1, marginRight: "8px" }}
+          {/* Contact List */}
+          <Sider width={300} style={{ background: "#f0f0f0", borderRight: "1px solid #d9d9d9" }}>
+            <div style={{ padding: "16px" }}>
+              <Input.Search
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ marginBottom: "16px" }}
+              />
+              <List
+                itemLayout="horizontal"
+                dataSource={contacts.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))}
+                renderItem={(contact) => (
+                  <List.Item onClick={() => handleContactClick(contact.id)} style={{ cursor: "pointer", background: "#f0f0f0" }}>
+                    <List.Item.Meta
+                      avatar={<Avatar src={contact.avatar} />}
+                      title={contact.name}
+                      description={contact.status === "online" ? "🟢 Online" : `🔴 Left ${contact.lastSeen}`}
+                    />
+                  </List.Item>
+                )}
+              />
+            </div>
+          </Sider>
+
+          <Layout>
+            {/* Header */}
+            <Header
+              style={{
+                background: "#fff",
+                padding: "0 16px",
+                borderBottom: "1px solid #f0f0f0",
+                display: "flex",
+                alignItems: "center",
+                height: "80px",
+              }}
+            >
+              <Avatar src={contacts.find((c) => c.id === selectedContactId)?.avatar} size="large" />
+              <div style={{ marginLeft: "16px", display: "flex", flexDirection: "column" }}>
+                <Text strong>{contacts.find((c) => c.id === selectedContactId)?.name}</Text>
+                <Text type="secondary">
+                  {contacts.find((c) => c.id === selectedContactId)?.status === "online"
+                    ? "🟢 Online"
+                    : `🔴 Last seen: ${contacts.find((c) => c.id === selectedContactId)?.lastSeen}`}
+                </Text>
+              </div>
+              <div style={{ marginLeft: "auto", display: "flex", gap: "16px" }}>
+                <PictureOutlined style={{ fontSize: "22px", cursor: "pointer" }} onClick={() => handleIconClick("Image")} />
+                <SmileOutlined style={{ fontSize: "22px", cursor: "pointer" }} onClick={() => handleIconClick("Smile")} />
+                <MoreOutlined style={{ fontSize: "22px", cursor: "pointer" }} onClick={() => handleIconClick("MoreHorizontal")} />
+              </div>
+            </Header>
+
+            {/* Chat Content */}
+            <Content style={{ padding: "16px", background: "#fff", overflowY: "auto" }}>
+              {messages[selectedContactId!]?.map((msg, index) => (
+                <div key={index} style={{ display: "flex", justifyContent: msg.sender === "me" ? "flex-end" : "flex-start", marginBottom: "16px" }}>
+                  <div style={{ maxWidth: "60%", padding: "12px", borderRadius: "8px", background: msg.sender === "me" ? "#8A2BE2" : "#f0f0f0", color: msg.sender === "me" ? "#fff" : "#000" }}>
+                    <p style={{ margin: 0 }}>{msg.text}</p>
+                    <Text type="secondary" style={{ fontSize: "12px" }}>{msg.time}</Text>
+                  </div>
+                </div>
+              ))}
+            </Content>
+
+            {/* Message Input */}
+            <div style={{ padding: "16px", borderTop: "1px solid #f0f0f0", background: "#fff", display: "flex" }}>
+              <Input
+                placeholder="Enter text here..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                style={{ flex: 1, marginRight: "8px" }}
+              />
+              <Button type="primary" onClick={handleSendMessage} style={{ backgroundColor: "#8A2BE2", borderColor: "#8A2BE2" }}>Send</Button>
+            </div>
+          </Layout>
+
+          {/* Settings Drawer */}
+          <SettingsDrawer visible={isDrawerVisible} onClose={() => setIsDrawerVisible(false)} />
+
+          {/* 好友列表抽屉 */}
+          <FriendsListDrawer
+            visible={isFriendsDrawerVisible}
+            onClose={() => setIsFriendsDrawerVisible(false)}
           />
-          <Button type="primary" onClick={handleSendMessage} style={{ backgroundColor: "#8A2BE2", borderColor: "#8A2BE2" }}>Send</Button>
-        </div>
-      </Layout>
-
-      {/* Settings Drawer */}
-      <SettingsDrawer visible={isDrawerVisible} onClose={() => setIsDrawerVisible(false)} />
-    </Layout>
+        </Layout>
     </>
   );
 };
