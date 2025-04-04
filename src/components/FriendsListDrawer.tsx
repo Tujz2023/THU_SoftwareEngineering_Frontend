@@ -251,7 +251,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
         title={<span style={{ color: "#4caf50", fontWeight: "bold" }}>好友申请</span>}
         visible={isRequestsModalVisible}
         onCancel={() => setIsRequestsModalVisible(false)}
-        footer={null}
+        footer={undefined}
         bodyStyle={{
           background: "linear-gradient(135deg, #f9f9f9, #e6f7ff)",
           padding: "16px",
