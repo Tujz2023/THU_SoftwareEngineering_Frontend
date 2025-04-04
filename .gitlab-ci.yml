@@ -25,7 +25,7 @@ build:
 
   before_script:
     - corepack enable
-    - pnpm config set registry https://npm-cache-sepi.app.spring25a.secoder.net/
+    - pnpm config set registry https://registry.npmmirror.com
     - pnpm install
 
 # unit-test:

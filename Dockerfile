@@ -5,7 +5,7 @@ WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
 
-RUN corepack enable && pnpm config set registry https://npm-cache-sepi.app.spring25a.secoder.net/
+RUN corepack enable && pnpm config set registry https://registry.npmmirror.com
 
 RUN pnpm install
 
