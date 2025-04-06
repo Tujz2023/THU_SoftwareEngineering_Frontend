@@ -55,7 +55,7 @@ const FriendRequestDetails: React.FC<FriendRequestDetailsProps> = ({ visible, on
                 拒绝
               </Button>,
             ]
-          : undefined
+          : []
       }
     >
       <div style={{ textAlign: "center" }}>

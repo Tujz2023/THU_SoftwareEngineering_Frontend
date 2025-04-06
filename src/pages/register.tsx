@@ -139,6 +139,7 @@ const RegisterPage = () => {
         if (Number(res.code) === 0) {
           // 注册成功后将 JWT Token 存储到 Cookie 中
           Cookies.set('jwtToken', res.token, { expires: 3 }); // 设置有效期为 3 天
+          Cookies.set('userEmail', userEmail, { expires: 3 }); // 设置有效期为 3 天
           messageApi.open({
           type: 'success',
           content: "注册成功，自动登录中..."

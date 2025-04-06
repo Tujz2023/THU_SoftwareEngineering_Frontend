@@ -27,20 +27,27 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose, userI
   return (
     <>
       <Drawer
-        title={<span style={{ color: "#4caf50", fontWeight: "bold" }}>设置</span>}
+        title={<span style={{ color: "#fff", fontWeight: "bold" }}>设置</span>}
         placement="left"
         onClose={onClose}
         open={visible}
         width="38vw"
-        bodyStyle={{
-          background: "linear-gradient(135deg, #f0f8ff, #e6f7ff)",
-          borderRadius: "16px 0 0 16px",
-          padding: "0",
-        }}
-        headerStyle={{
-          background: "#4caf50",
-          color: "#fff",
-          borderRadius: "16px 0 0 0",
+        // bodyStyle={{
+        //   background: "linear-gradient(135deg, #f0f8ff, #e6f7ff)",
+        //   borderRadius: "16px 0 0 16px",
+        //   padding: "0",
+        // }}
+        styles={{ 
+          header:{
+            background: "#4caf50",
+            color: "#fff",
+            borderRadius: "16px 0 0 0",
+          },
+          body:{
+            background: "linear-gradient(135deg, #f0f8ff, #e6f7ff)",
+            borderRadius: "16px 0 0 16px",
+            padding: "0",
+          }
         }}
       >
         <div style={{ display: "flex", height: "100%" }}>

@@ -66,6 +66,7 @@ const ChatPage = () => {
   const token = Cookies.get("jwtToken");
 
   const fetchUserInfo = () => {
+    console.log("fetching user info...");
     fetch("/api/account/info", {
       method: "GET",
       headers: {
@@ -76,12 +77,10 @@ const ChatPage = () => {
       .then((res) => res.json())
       .then((res) => {
         if (Number(res.code) === 0) {
-          if (res.avatar === "") {
-            res.avatar = DEFAULT_AVATAR;
-          }
           setUserInfo(res);
         } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
           Cookies.remove("jwtToken");
+          Cookies.remove("userEmail");
           messageApi.open({
             type: "error",
             content: "JWT token无效或过期，正在跳转回登录界面...",
@@ -103,11 +102,14 @@ const ChatPage = () => {
       });
   };
 
+  // useEffect(() => {
+  //   if (isDrawerVisible) {
+  //     fetchUserInfo();
+  //   }
+  // }, [isDrawerVisible]);
   useEffect(() => {
-    if (isDrawerVisible) {
-      fetchUserInfo();
-    }
-  }, [isDrawerVisible]);
+    fetchUserInfo();
+  }, [])
 
   // 检查 JWT Token 的有效性
   useEffect(() => {
@@ -179,13 +181,13 @@ const ChatPage = () => {
             }}
           >
             {/* User Avatar */}
-            <Avatar src={DEFAULT_AVATAR} size={40} style={{ marginBottom: "24px", cursor: "pointer" }} onClick={handleAvatarClick} />
+            {userInfo && <Avatar src={userInfo.avatar} size={40} style={{ marginBottom: "24px", cursor: "pointer" }} onClick={handleAvatarClick} />}
 
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px" }}>
               <MessageOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("MessageCircle")} />
               <ContactsOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Users")} />
-              <SettingOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Settings")} />
               <TeamOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Groups")} /> {/* 分组图标 */}
+              <SettingOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Settings")} />
             </div>
           </Sider>
 

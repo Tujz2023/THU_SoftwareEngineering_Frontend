@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Drawer, List, Input, Button, Typography, message, Avatar, Modal, Dropdown, Menu, Divider } from "antd";
+import { Drawer, List, Input, Button, Typography, message, Avatar, Modal, Dropdown, Menu, Divider, MenuProps } from "antd";
 import { PlusOutlined, UserAddOutlined } from "@ant-design/icons";
 import Cookies from "js-cookie";
 
@@ -30,6 +30,19 @@ interface GroupManagementDrawerProps {
   visible: boolean;
   onClose: () => void;
 }
+
+const drawerStyles = {
+  body: {
+    background: "linear-gradient(135deg, #f0f8ff, #e6f7ff)", // 调整背景颜色
+    borderRadius: "16px 0 0 16px",
+    padding: "16px",
+  },
+  header: {
+    background: "#4caf50",
+    color: "#fff",
+    borderRadius: "16px 0 0 0",
+  },
+};
 
 const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, onClose }) => {
   const [groups, setGroups] = useState<Group[]>([]);
@@ -78,11 +91,13 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
   };
 
   // 修改分组名称
-  const updateGroupName = async (groupId: string, newName: string) => {
-    if (!newName.trim()) {
+  const updateGroupName = async () => {
+    let newName = editingGroupName.trim();
+    if (! (editingGroup && newName)){
       messageApi.error("分组名称不能为空");
       return;
     }
+    let groupId = editingGroup.id;
 
     const token = Cookies.get("jwtToken");
     if (!token) {
@@ -114,6 +129,10 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
     } finally {
       setLoading(false);
     }
+
+    setIsEditModalVisible(false);
+    setEditingGroup(undefined);
+    setEditingGroupName("");
   };
 
   // 删除分组
@@ -151,9 +170,9 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
       messageApi.error("网络错误，请稍后重试");
     } finally {
       setLoading(false);
-      setIsDeleteModalVisible(false); // 关闭删除确认弹窗
-      setGroupToDelete(undefined); // 清空待删除的分组 ID
     }
+    setIsDeleteModalVisible(false); // 关闭删除确认弹窗
+    setGroupToDelete(undefined); // 清空待删除的分组 ID
   };
 
   const showDeleteModal = (groupId: string) => {
@@ -169,16 +188,16 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
   };
 
   // 确认修改分组名称
-  const handleEditGroupName = async () => {
-    if (editingGroup && editingGroupName.trim()) {
-      await updateGroupName(editingGroup.id, editingGroupName.trim());
-      setIsEditModalVisible(false);
-      setEditingGroup(undefined);
-      setEditingGroupName("");
-    } else {
-      messageApi.error("分组名称不能为空");
-    }
-  };
+  // const handleEditGroupName = async () => {
+  //   if (editingGroup && editingGroupName.trim()) {
+  //     await updateGroupName(editingGroup.id, editingGroupName.trim());
+  //     setIsEditModalVisible(false);
+  //     setEditingGroup(undefined);
+  //     setEditingGroupName("");
+  //   } else {
+  //     messageApi.error("分组名称不能为空");
+  //   }
+  // };
 
   // 获取分组详情
   const fetchGroupDetails = async (groupId: string) => {
@@ -404,16 +423,19 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
   }, [visible]);
 
   // 修改后的菜单
-  const menu = (group: Group) => (
-    <Menu>
-      <Menu.Item key="edit" onClick={() => showEditModal(group)}>
-        修改名称
-      </Menu.Item>
-      <Menu.Item key="delete" danger onClick={() => showDeleteModal(group.id)}>
-        删除分组
-      </Menu.Item>
-    </Menu>
-  );
+  const menu = (group: Group): MenuProps['items'] => [
+    {
+      key: 'edit',
+      label: '修改名称',
+      onClick: () => showEditModal(group),
+    },
+    {
+      key: 'delete',
+      label: '删除分组',
+      danger: true,
+      onClick: () => showDeleteModal(group.id),
+    }
+  ];
 
   // 过滤好友列表
   const filteredFriends = friends.filter((friend) =>
@@ -427,7 +449,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
       <Modal
         title="修改分组名称"
         open={isEditModalVisible}
-        onOk={handleEditGroupName}
+        onOk={updateGroupName}
         onCancel={() => setIsEditModalVisible(false)}
         okText="确认"
         cancelText="取消"
@@ -467,12 +489,18 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
       </Modal>
 
       <Drawer
-        title={<span style={{ color: "#4caf50", fontWeight: "bold", fontSize: "20px" }}>分组管理</span>}
+        title={<span style={{ color: "#fff", fontWeight: "bold" }}>分组管理</span>}
         placement="left"
-        onClose={onClose}
+        onClose={() => {
+          setSelectedGroupId(undefined);
+          onClose();
+        }}
         open={visible}
         width="70vw"
-        bodyStyle={{ padding: "24px", background: "#f0f2f5" }}
+        styles={{
+          body: drawerStyles.body, // 使用 styles 替代 bodyStyle
+          header: drawerStyles.header, // 使用 styles 替代 headerStyle
+        }}
       >
         {contextHolder}
         <div style={{ display: "flex", gap: "16px", height: "100%" }}>
@@ -493,7 +521,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
             <List
               dataSource={groups}
               renderItem={(group) => (
-                <Dropdown overlay={menu(group)} trigger={["contextMenu"]}>
+                <Dropdown menu={{ items: menu(group) }} trigger={["contextMenu"]}>
                   <List.Item
                     style={{
                       cursor: "pointer",
@@ -521,7 +549,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
                 <Divider
-                  orientation="left"
+                  orientation="center"
                   style={{
                     margin: 0,
                     fontWeight: "bold",
@@ -597,9 +625,9 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
         <Modal
           title={<span style={{ color: "#1890ff", fontWeight: "bold" }}>好友列表</span>}
           open={isFriendListVisible}
-          onCancel={() => setIsFriendListVisible(false)}
-          footer={undefined}
-          bodyStyle={{ padding: "16px", background: "#f9f9f9" }}
+          onCancel={() => {setIsFriendListVisible(false); setSearchKeyword('');}}
+          footer={[]}
+          styles={{ body:{padding: "16px", background: "#f9f9f9"} }}
         >
           {/* 搜索框 */}
           <Input.Search

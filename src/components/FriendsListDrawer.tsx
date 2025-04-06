@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Drawer, Input, List, Avatar, Typography, Button, message, Modal } from "antd";
-import { UserAddOutlined } from "@ant-design/icons"; // 引入图标
+import { UserAddOutlined, RedoOutlined } from "@ant-design/icons"; // 引入图标
 import Cookies from "js-cookie";
 import SearchUserDrawer from "./SearchUserDrawer";
 import FriendRequestDetails from "./FriendRequestDetails";
@@ -71,7 +71,6 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
   useEffect(() => {
     if (visible) {
       fetchFriends();
-      fetchFriendRequests();
     }
   }, [visible]);
 
@@ -171,6 +170,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
         messageApi.success(res.message || "已接受好友申请");
         fetchFriendRequests();
         fetchFriends();
+        setIsDetailsModalVisible(false);
       } else {
         messageApi.error(res.info || "接受好友申请失败");
       }
@@ -204,6 +204,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
       if (res.code === 0) {
         messageApi.success(res.message || "已拒绝好友申请");
         fetchFriendRequests();
+        setIsDetailsModalVisible(false);
       } else {
         messageApi.error(res.info || "拒绝好友申请失败");
       }
@@ -240,6 +241,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
         setIsFriendModalVisible(true);
       } else {
         messageApi.error(res.info || "获取好友详情失败");
+        fetchFriends();
       }
     } catch (error) {
       messageApi.error("网络错误，请稍后重试");
@@ -293,14 +295,20 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
     fetchFriendDetails(friend.id);
   };
 
+  const handleFriendListDrawerClose = () => {
+    setSearchKeyword("");
+    onClose(); // 调用父组件的关闭方法
+  };
+
+
   return (
     <>
       {contextHolder}
 
       <Drawer
-        title={<span style={{ color: "#4caf50", fontWeight: "bold" }}>好友列表</span>}
+        title={<span style={{ color: "#fff", fontWeight: "bold" }}>好友列表</span>}
         placement="left"
-        onClose={onClose}
+        onClose={handleFriendListDrawerClose}
         open={visible}
         width="38vw"
         styles={{
@@ -316,6 +324,22 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
             style={{
               flex: 1,
               borderRadius: "8px",
+              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+            }}
+          />
+          <Button
+            type="text"
+            shape="circle"
+            icon={<RedoOutlined style={{ fontSize: "18px", color: "#fff" }} />}
+            onClick={() => {
+              fetchFriends();
+              setSearchKeyword("");
+            }}
+            style={{
+              marginLeft: "8px",
+              backgroundColor: "#1890ff", // 假设刷新按钮背景色为蓝色
+              border: "none",
+              cursor: "pointer",
               boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
             }}
           />
@@ -343,9 +367,12 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
             borderColor: "#4caf50",
             borderRadius: "8px",
           }}
-          onClick={() => setIsRequestsModalVisible(true)}
+          onClick={() => {
+            setIsRequestsModalVisible(true);
+            fetchFriendRequests();
+          }}
         >
-          新的朋友
+          好友请求
         </Button>
 
         <List
@@ -418,7 +445,17 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
 
       {/* 好友申请 Modal */}
       <Modal
-        title={<span style={{ color: "#4caf50", fontWeight: "bold" }}>好友申请</span>}
+        title={
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <span style={{ color: "#4caf50", fontWeight: "bold" }}>好友请求</span>
+            <Button 
+              type="text"
+              icon={<RedoOutlined style={{ fontSize: "18px", color: "#4caf50" }} />}
+              onClick={() => fetchFriendRequests()}
+              style={{ marginLeft: "8px" }}
+            />
+          </div>
+        }
         open={isRequestsModalVisible}
         onCancel={() => setIsRequestsModalVisible(false)}
         footer={[]}

@@ -41,6 +41,7 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
       .then((res) => {
         if (res.code === 0) {
           Cookies.remove("jwtToken");
+          Cookies.remove("userEmail");
           messageApi.open({
             type: 'success',
             content: res.message || "注销成功，正在跳转至聊天界面..."
