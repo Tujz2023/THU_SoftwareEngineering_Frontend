@@ -59,14 +59,14 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [isRequestsModalVisible, setIsRequestsModalVisible] = useState(false);
   const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<FriendRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<FriendRequest | undefined>(undefined);
   const [isSearchDrawerVisible, setIsSearchDrawerVisible] = useState(false);
-  const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+  const [selectedFriend, setSelectedFriend] = useState<Friend | undefined>(undefined);
   const [isFriendModalVisible, setIsFriendModalVisible] = useState(false);
-  const [friendDetails, setFriendDetails] = useState<any>(null);
+  const [friendDetails, setFriendDetails] = useState<any>(undefined);
   const [messageApi, contextHolder] = message.useMessage();
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false); // 控制删除确认 Modal 的显示
-  const [friendToDelete, setFriendToDelete] = useState<Friend | null>(null); // 当前要删除的好友
+  const [friendToDelete, setFriendToDelete] = useState<Friend | undefined>(undefined); // 当前要删除的好友
 
   useEffect(() => {
     if (visible) {
@@ -285,7 +285,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
 
   const handleCancelDelete = () => {
     setIsDeleteModalVisible(false);
-    setFriendToDelete(null);
+    setFriendToDelete(undefined);
   };
 
   const handleViewFriendDetails = (friend: Friend) => {
@@ -500,7 +500,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
       <FriendRequestDetails
         visible={isDetailsModalVisible}
         onClose={() => setIsDetailsModalVisible(false)}
-        request={selectedRequest}
+        request={selectedRequest || undefined}
         onAccept={(senderId, receiverId) => handleAcceptRequest(senderId, receiverId)}
         onReject={(senderId, receiverId) => handleRejectRequest(senderId, receiverId)}
       />

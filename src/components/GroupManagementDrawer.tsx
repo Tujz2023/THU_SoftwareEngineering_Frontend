@@ -33,7 +33,7 @@ interface GroupManagementDrawerProps {
 
 const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, onClose }) => {
   const [groups, setGroups] = useState<Group[]>([]);
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | undefined>(undefined);
   const [members, setMembers] = useState<Member[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [isFriendListVisible, setIsFriendListVisible] = useState(false);
@@ -41,11 +41,11 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
-  const [groupToDelete, setGroupToDelete] = useState<string | null>(null);
+  const [groupToDelete, setGroupToDelete] = useState<string | undefined>(undefined);
   const [isDeleteMemberModalVisible, setIsDeleteMemberModalVisible] = useState(false);
-  const [memberToDelete, setMemberToDelete] = useState<string | null>(null);
+  const [memberToDelete, setMemberToDelete] = useState<string | undefined>(undefined);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
-  const [editingGroup, setEditingGroup] = useState<Group | null>(null);
+  const [editingGroup, setEditingGroup] = useState<Group | undefined>(undefined);
   const [editingGroupName, setEditingGroupName] = useState("");
   const [searchKeyword, setSearchKeyword] = useState(""); 
 
@@ -142,7 +142,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
       if (res.code === 0) {
         messageApi.success(res.message || "删除分组成功");
         fetchGroups(); // 刷新分组列表
-        setSelectedGroupId(null); // 清空选中分组
+        setSelectedGroupId(undefined); // 清空选中分组
         setMembers([]); // 清空成员列表
       } else {
         messageApi.error(res.info || "删除分组失败");
@@ -152,7 +152,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
     } finally {
       setLoading(false);
       setIsDeleteModalVisible(false); // 关闭删除确认弹窗
-      setGroupToDelete(null); // 清空待删除的分组 ID
+      setGroupToDelete(undefined); // 清空待删除的分组 ID
     }
   };
 
@@ -173,7 +173,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
     if (editingGroup && editingGroupName.trim()) {
       await updateGroupName(editingGroup.id, editingGroupName.trim());
       setIsEditModalVisible(false);
-      setEditingGroup(null);
+      setEditingGroup(undefined);
       setEditingGroupName("");
     } else {
       messageApi.error("分组名称不能为空");
@@ -283,7 +283,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
     } finally {
       setLoading(false);
       setIsDeleteMemberModalVisible(false); // 关闭删除确认弹窗
-      setMemberToDelete(null); // 清空待删除的成员 ID
+      setMemberToDelete(undefined); // 清空待删除的成员 ID
     }
   };
 
@@ -598,7 +598,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
           title={<span style={{ color: "#1890ff", fontWeight: "bold" }}>好友列表</span>}
           open={isFriendListVisible}
           onCancel={() => setIsFriendListVisible(false)}
-          footer={null}
+          footer={undefined}
           bodyStyle={{ padding: "16px", background: "#f9f9f9" }}
         >
           {/* 搜索框 */}

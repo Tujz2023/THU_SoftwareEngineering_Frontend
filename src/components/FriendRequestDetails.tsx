@@ -17,11 +17,11 @@ interface FriendRequestDetailsProps {
     message: string;
     created_at: string;
     status: number;
-  } | null;
+  } | undefined;
 }
 
 const FriendRequestDetails: React.FC<FriendRequestDetailsProps> = ({ visible, onClose, onAccept, onReject, request }) => {
-  if (!request) return null;
+  if (!request) return undefined;
 
   const statusText: { [key: number]: string } = {
     0: "等待处理",
@@ -55,7 +55,7 @@ const FriendRequestDetails: React.FC<FriendRequestDetailsProps> = ({ visible, on
                 拒绝
               </Button>,
             ]
-          : null
+          : undefined
       }
     >
       <div style={{ textAlign: "center" }}>
