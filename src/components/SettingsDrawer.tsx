@@ -1,67 +1,17 @@
-import React, { useState, useEffect } from "react";
-import { Drawer, message } from "antd";
-import Cookies from "js-cookie";
+import React, { useState } from "react";
+import { Drawer } from "antd";
 import AccountSettings from "./SettingsDrawer/AccountSettings";
 import PrivacySettings from "./SettingsDrawer/PrivacySettings";
-import { DEFAULT_AVATAR } from "../constants/avatar";
-import { useRouter } from "next/router";
 
 interface SettingsDrawerProps {
   visible: boolean;
   onClose: () => void;
+  userInfo: any; // 从父组件传递用户信息
+  fetchUserInfo: () => void; // 从父组件传递刷新用户信息的函数
 }
 
-const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => {
-  const [messageApi, contextHolder] = message.useMessage();
+const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose, userInfo, fetchUserInfo }) => {
   const [activeMenu, setActiveMenu] = useState("账号设置");
-  const [userInfo, setUserInfo] = useState<any>(undefined);
-  const router = useRouter();
-
-  const token = Cookies.get("jwtToken");
-
-  const fetchUserInfo = () => {
-    fetch("/api/account/info", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `${token}`,
-      },
-    })
-      .then((res) => res.json())
-      .then((res) => {
-        if (Number(res.code) === 0) {
-          if (res.avatar === "") {
-            res.avatar = DEFAULT_AVATAR;
-          }
-          setUserInfo(res);
-        } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
-          Cookies.remove("jwtToken");
-          messageApi.open({
-            type: "error",
-            content: "JWT token无效或过期，正在跳转回登录界面...",
-          }).then(() => {
-            router.push("/");
-          });
-        } else {
-          messageApi.open({
-            type: "error",
-            content: res.info || "获取用户信息失败",
-          });
-        }
-      })
-      .catch((err) => {
-        messageApi.open({
-          type: "error",
-          content: `网络错误，请稍后重试: ${err}`,
-        });
-      });
-  };
-
-  useEffect(() => {
-    if (visible) {
-      fetchUserInfo();
-    }
-  }, [visible]);
 
   const renderContent = () => {
     switch (activeMenu) {
@@ -76,7 +26,6 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose }) => 
 
   return (
     <>
-      {contextHolder}
       <Drawer
         title={<span style={{ color: "#4caf50", fontWeight: "bold" }}>设置</span>}
         placement="left"

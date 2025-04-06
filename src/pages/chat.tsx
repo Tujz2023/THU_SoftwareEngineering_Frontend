@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router"; // 引入 useRouter
 import Cookies from "js-cookie"; // 引入 js-cookie
 import { Input, Button, Layout, List, Avatar, Typography, message } from "antd";
-import { MessageOutlined, TeamOutlined, SettingOutlined, PictureOutlined, SmileOutlined, MoreOutlined } from "@ant-design/icons";
+import { MessageOutlined, TeamOutlined, SettingOutlined, PictureOutlined, SmileOutlined, MoreOutlined,ContactsOutlined} from "@ant-design/icons";
 import 'antd/dist/reset.css';
 import SettingsDrawer from "../components/SettingsDrawer";
 import FriendsListDrawer from "../components/FriendsListDrawer";
+import GroupManagementDrawer from "../components/GroupManagementDrawer";
 import { DEFAULT_AVATAR } from "../constants/avatar";
 
 const { Header, Sider, Content } = Layout;
@@ -55,13 +56,59 @@ const ChatPage = () => {
   const [input, setInput] = useState("");
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [isFriendsDrawerVisible, setIsFriendsDrawerVisible] = useState(false); // 控制好友列表抽屉的显示
+  const [isGroupDrawerVisible, setIsGroupDrawerVisible] = useState(false); // 控制分组管理抽屉的显示
+  const [userInfo, setUserInfo] = useState<any>(undefined); // 用户信息状态
   const router = useRouter(); // 初始化 useRouter
   const [showAlert, setShowAlert] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // 从 Cookie 中获取 JWT Token
   const token = Cookies.get("jwtToken");
-  
+
+  const fetchUserInfo = () => {
+    fetch("/api/account/info", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `${token}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        if (Number(res.code) === 0) {
+          if (res.avatar === "") {
+            res.avatar = DEFAULT_AVATAR;
+          }
+          setUserInfo(res);
+        } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+          Cookies.remove("jwtToken");
+          messageApi.open({
+            type: "error",
+            content: "JWT token无效或过期，正在跳转回登录界面...",
+          }).then(() => {
+            router.push("/");
+          });
+        } else {
+          messageApi.open({
+            type: "error",
+            content: res.info || "获取用户信息失败",
+          });
+        }
+      })
+      .catch((err) => {
+        messageApi.open({
+          type: "error",
+          content: `网络错误，请稍后重试: ${err}`,
+        });
+      });
+  };
+
+  useEffect(() => {
+    if (isDrawerVisible) {
+      fetchUserInfo();
+    }
+  }, [isDrawerVisible]);
+
   // 检查 JWT Token 的有效性
   useEffect(() => {
     // 检查 cookies 中是否已存在 jwtToken
@@ -100,6 +147,8 @@ const ChatPage = () => {
       setIsDrawerVisible(true); // 打开设置抽屉
     } else if (iconName === "Users") {
       setIsFriendsDrawerVisible(true); // 打开好友列表抽屉
+    } else if (iconName === "Groups") {
+      setIsGroupDrawerVisible(true); // 打开分组管理抽屉
     } else {
       console.log(`${iconName} icon clicked`);
     }
@@ -134,8 +183,9 @@ const ChatPage = () => {
 
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px" }}>
               <MessageOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("MessageCircle")} />
-              <TeamOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Users")} />
+              <ContactsOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Users")} />
               <SettingOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Settings")} />
+              <TeamOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Groups")} /> {/* 分组图标 */}
             </div>
           </Sider>
 
@@ -218,12 +268,23 @@ const ChatPage = () => {
           </Layout>
 
           {/* Settings Drawer */}
-          <SettingsDrawer visible={isDrawerVisible} onClose={() => setIsDrawerVisible(false)} />
+          <SettingsDrawer
+            visible={isDrawerVisible}
+            onClose={() => setIsDrawerVisible(false)}
+            userInfo={userInfo} // 传递用户信息
+            fetchUserInfo={fetchUserInfo} // 传递刷新函数
+          />
 
           {/* 好友列表抽屉 */}
           <FriendsListDrawer
             visible={isFriendsDrawerVisible}
             onClose={() => setIsFriendsDrawerVisible(false)}
+          />
+
+          {/* 分组管理抽屉 */}
+          <GroupManagementDrawer
+            visible={isGroupDrawerVisible}
+            onClose={() => setIsGroupDrawerVisible(false)}
           />
         </Layout>
     </>

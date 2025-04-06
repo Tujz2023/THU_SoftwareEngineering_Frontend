@@ -18,11 +18,27 @@ interface SearchUserDrawerProps {
   onClose: () => void;
 }
 
+const drawerStyles = {
+  body: {
+    background: "linear-gradient(135deg, #f0f8ff, #e6f7ff)", // 调整背景颜色
+    borderRadius: "16px 0 0 16px",
+    padding: "16px",
+  },
+  header: {
+    background: "#4caf50",
+    color: "#fff",
+    borderRadius: "16px 0 0 0",
+  },
+};
+
 const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose }) => {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
+
+  // 从 cookies 获取自己的 email
+  const userEmail = Cookies.get("userEmail") || "";
 
   const handleSearchUsers = async () => {
     const token = Cookies.get("jwtToken");
@@ -57,6 +73,10 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRefresh = () => {
+    handleSearchUsers(); // 重新发送搜索请求
   };
 
   const handleAddFriend = async (targetId: string) => {
@@ -106,15 +126,9 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
         onClose={handleDrawerClose}
         open={visible}
         width="400px"
-        bodyStyle={{
-          background: "linear-gradient(135deg, #f0f8ff, #e6f7ff)", // 调整背景颜色
-          borderRadius: "16px 0 0 16px",
-          padding: "16px",
-        }}
-        headerStyle={{
-          background: "#4caf50",
-          color: "#fff",
-          borderRadius: "16px 0 0 0",
+        styles={{
+          body: drawerStyles.body, // 使用 styles 替代 bodyStyle
+          header: drawerStyles.header, // 使用 styles 替代 headerStyle
         }}
       >
         <Input.Search
@@ -132,6 +146,19 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
             backgroundColor: "#e8f5e9", // 调整背景颜色为浅绿色
           }}
         />
+        <Button
+          type="primary"
+          onClick={handleRefresh}
+          style={{
+            width: "100%",
+            marginBottom: "16px",
+            backgroundColor: "#4caf50",
+            borderColor: "#4caf50",
+            borderRadius: "12px",
+          }}
+        >
+          刷新
+        </Button>
 
         <List
           dataSource={searchResults}
@@ -145,7 +172,9 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
                 padding: "12px",
               }}
               actions={[
-                result.is_friend ? (
+                result.email === userEmail ? (
+                  <span style={{ color: "#888", fontWeight: "bold" }}>这是你自己</span>
+                ) : result.is_friend ? (
                   <span style={{ color: "#4caf50", fontWeight: "bold" }}>已是好友</span>
                 ) : (
                   <Button

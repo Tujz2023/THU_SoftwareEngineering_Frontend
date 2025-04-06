@@ -23,6 +23,7 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
 
   const handleLogout = () => {
     Cookies.remove("jwtToken");
+    Cookies.remove("userEmail");
     messageApi.open({
       type: 'success',
       content: "已退出登录，正在跳转至登录界面..."
