@@ -99,12 +99,12 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
 
   // 修改分组名称
   const updateGroupName = async () => {
-    let newName = editingGroupName.trim();
+    const newName = editingGroupName.trim();
     if (! (editingGroup && newName)){
       messageApi.error("分组名称不能为空");
       return;
     }
-    let groupId = editingGroup.id;
+    const groupId = editingGroup.id;
 
     const token = Cookies.get("jwtToken");
 
