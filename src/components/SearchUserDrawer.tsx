@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Drawer, Input, List, Avatar, Typography, Button, message, Modal } from "antd";
 import { RedoOutlined } from "@ant-design/icons";
 import Cookies from "js-cookie";
+import { useRouter } from "next/router";
 
 const { Title } = Typography;
 
@@ -40,16 +41,13 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
   const [messageText, setMessageText] = useState(''); // 存储用户输入的消息
   const [isModalVisible, setIsModalVisible] = useState(false); // 控制模态框的显示
   const [targetUserId, setTargetUserId] = useState(''); // 存储目标用户ID
+  const router = useRouter();
 
   // 从 cookies 获取自己的 email
   const userEmail = Cookies.get("userEmail") || "";
 
   const handleSearchUsers = async () => {
     const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     if (!search.trim()) {
       messageApi.error("请输入要搜索的用户名");
@@ -69,6 +67,15 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
 
       if (res.code === 0) {
         setSearchResults(res.results);
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
       } else {
         messageApi.error(res.info || "搜索失败");
       }
@@ -91,10 +98,6 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
 
   const handleSendMessage = async () => {
     const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     if (messageText.trim() === '') {
       messageApi.error('请输入消息内容');
@@ -120,6 +123,15 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
         messageApi.success(res.message || "好友申请已发送");
         setIsModalVisible(false); // 隐藏模态框
         setMessageText(''); // 清空消息文本
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
       } else {
         messageApi.error(res.info || "发送好友申请失败");
       }

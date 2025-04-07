@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/router"; // 引入 useRouter
 import { Drawer, Input, List, Avatar, Typography, Button, message, Modal } from "antd";
 import { UserAddOutlined, RedoOutlined } from "@ant-design/icons"; // 引入图标
 import Cookies from "js-cookie";
@@ -67,6 +68,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
   const [messageApi, contextHolder] = message.useMessage();
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false); // 控制删除确认 Modal 的显示
   const [friendToDelete, setFriendToDelete] = useState<Friend | undefined>(undefined); // 当前要删除的好友
+  const router = useRouter();
 
   useEffect(() => {
     if (visible) {
@@ -86,10 +88,6 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
 
   const fetchFriends = async () => {
     const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     try {
       const response = await fetch("/api/friends", {
@@ -107,6 +105,15 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
         );
         setFriends(sortedFriends);
         setFilteredFriends(sortedFriends); // 初始化过滤后的好友列表
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
       } else {
         messageApi.error(res.info || "获取好友列表失败");
       }
@@ -134,6 +141,15 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
 
       if (res.code === 0) {
         setFriendRequests(res.requests);
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
       } else if (res.code === -7) {
         setFriendRequests([]);
       } else {
@@ -146,10 +162,6 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
 
   const handleAcceptRequest = async (senderId: string, receiverId: string) => {
     const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     try {
       const response = await fetch("/api/friend_request_handle", {
@@ -171,6 +183,15 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
         fetchFriendRequests();
         fetchFriends();
         setIsDetailsModalVisible(false);
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
       } else {
         messageApi.error(res.info || "接受好友申请失败");
       }
@@ -205,6 +226,15 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
         messageApi.success(res.message || "已拒绝好友申请");
         fetchFriendRequests();
         setIsDetailsModalVisible(false);
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
       } else {
         messageApi.error(res.info || "拒绝好友申请失败");
       }
@@ -239,6 +269,15 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
       if (res.code === 0) {
         setFriendDetails(res);
         setIsFriendModalVisible(true);
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
       } else {
         messageApi.error(res.info || "获取好友详情失败");
         fetchFriends();
@@ -272,6 +311,15 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
         setIsDeleteModalVisible(false);
         setIsFriendModalVisible(false);
         fetchFriends(); // 刷新好友列表
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
       } else {
         messageApi.error(res.info || "删除好友失败");
       }
@@ -500,6 +548,13 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
         onCancel={() => setIsFriendModalVisible(false)}
         footer={[
           <Button
+            key="conversation"
+            type="primary"
+            onClick={() => alert("该功能仍在施工中")}
+          >
+            发送消息(暂不可用)
+          </Button>,
+          <Button
             key="delete"
             type="primary"
             danger
@@ -526,6 +581,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
             />
             <Title level={4}>{friendDetails.name}</Title>
             <p>邮箱: {friendDetails.email}</p>
+            <p>用户简介: {friendDetails.user_info}</p>
             <p>分组: {friendDetails.groups.map((group: any) => group.name).join(", ") || "无"}</p>
             {friendDetails.deleted && <p style={{ color: "#f5222d" }}>（已注销）</p>}
           </div>

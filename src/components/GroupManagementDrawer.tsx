@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Drawer, List, Input, Button, Typography, message, Avatar, Modal, Dropdown, Menu, Divider, MenuProps } from "antd";
 import { PlusOutlined, UserAddOutlined } from "@ant-design/icons";
 import Cookies from "js-cookie";
+import { useRouter } from "next/router";
 
 const { Title, Text } = Typography;
 
@@ -61,14 +62,11 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
   const [editingGroup, setEditingGroup] = useState<Group | undefined>(undefined);
   const [editingGroupName, setEditingGroupName] = useState("");
   const [searchKeyword, setSearchKeyword] = useState(""); 
+  const router = useRouter();
 
   // 获取分组列表
   const fetchGroups = async () => {
     const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     try {
       const response = await fetch("/api/groups", {
@@ -82,6 +80,15 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
 
       if (res.code === 0) {
         setGroups(res.groups);
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
       } else {
         messageApi.error(res.info || "获取分组失败");
       }
@@ -100,10 +107,6 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
     let groupId = editingGroup.id;
 
     const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     setLoading(true);
     try {
@@ -121,6 +124,15 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
       if (res.code === 0) {
         messageApi.success(res.message || "修改分组名称成功");
         fetchGroups(); // 刷新分组列表
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
       } else {
         messageApi.error(res.info || "修改分组名称失败");
       }
@@ -137,13 +149,12 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
 
   // 删除分组
   const deleteGroup = async () => {
-    if (!groupToDelete) return;
-
-    const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
+    if (!groupToDelete) {
+      messageApi.error("请先选择一个分组");
       return;
     }
+
+    const token = Cookies.get("jwtToken");
 
     setLoading(true);
     try {
@@ -163,6 +174,15 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
         fetchGroups(); // 刷新分组列表
         setSelectedGroupId(undefined); // 清空选中分组
         setMembers([]); // 清空成员列表
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
       } else {
         messageApi.error(res.info || "删除分组失败");
       }
@@ -202,10 +222,6 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
   // 获取分组详情
   const fetchGroupDetails = async (groupId: string) => {
     const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     try {
       const response = await fetch(`/api/groups/manage_groups?group_id=${groupId}`, {
@@ -220,6 +236,15 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
 
       if (res.code === 0) {
         setMembers(res.group.members || []);
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
       } else {
         messageApi.error(res.info || "获取分组详情失败");
       }
@@ -236,10 +261,6 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
     }
 
     const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     setLoading(true);
     try {
@@ -258,6 +279,15 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
         messageApi.success(res.message || "分组创建成功");
         setNewGroupName("");
         fetchGroups(); // 刷新分组列表
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
       } else {
         messageApi.error(res.info || "创建分组失败");
       }
@@ -270,13 +300,12 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
 
   // 删除分组成员
   const deleteGroupMember = async () => {
-    if (!selectedGroupId || !memberToDelete) return;
-
-    const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
+    if (!selectedGroupId || !memberToDelete) {
+      messageApi.error("未选择分组或未选择成员");
       return;
     }
+
+    const token = Cookies.get("jwtToken");
 
     setLoading(true);
     try {
@@ -294,6 +323,15 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
       if (res.code === 0) {
         messageApi.success(res.message || "删除分组成员成功");
         fetchGroupMembers(selectedGroupId); // 刷新分组成员列表
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
       } else {
         messageApi.error(res.info || "删除分组成员失败");
       }
@@ -314,10 +352,6 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
   // 获取分组成员列表
   const fetchGroupMembers = async (groupId: string) => {
     const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     try {
       const response = await fetch(`/api/groups/members?group_id=${groupId}`, {
@@ -332,6 +366,15 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
 
       if (res.code === 0) {
         setMembers(res.members || []);
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
       } else {
         messageApi.error(res.info || "获取分组成员失败");
       }
@@ -343,8 +386,9 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
   // 获取好友列表
   const fetchFriendList = async () => {
     const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
+
+    if (!selectedGroupId) {
+      messageApi.error("请先选择一个分组");
       return;
     }
 
@@ -367,6 +411,15 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
       if (res.code === 0) {
         setFriends(res.friends || []);
         setIsFriendListVisible(true); // 打开好友列表弹窗
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
       } else {
         messageApi.error(res.info || "获取好友列表失败");
       }
@@ -385,10 +438,6 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
     }
 
     const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     setLoading(true);
     try {
@@ -406,6 +455,15 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
       if (res.code === 0) {
         messageApi.success(res.message || "添加好友到分组成功");
         fetchGroupMembers(selectedGroupId); // 刷新分组成员列表
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
       } else {
         messageApi.error(res.info || "添加好友到分组失败");
       }
@@ -496,7 +554,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
           onClose();
         }}
         open={visible}
-        width="70vw"
+        width="60vw"
         styles={{
           body: drawerStyles.body, // 使用 styles 替代 bodyStyle
           header: drawerStyles.header, // 使用 styles 替代 headerStyle

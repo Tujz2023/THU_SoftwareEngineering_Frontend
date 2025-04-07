@@ -46,7 +46,16 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
             type: 'success',
             content: res.message || "注销成功，正在跳转至聊天界面..."
           }).then(() => {router.push('/')});
-        } else {
+        } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+            Cookies.remove("jwtToken");
+            Cookies.remove("userEmail");
+            messageApi.open({
+              type: "error",
+              content: "JWT token无效或过期，正在跳转回登录界面...",
+            }).then(() => {
+              router.push("/");
+            });
+        }else {
           messageApi.open({
             type: 'error',
             content: res.info || "注销失败"
@@ -164,6 +173,15 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
           setIsEditModalVisible(false);
           setIsPasswordModalVisible(false); // 关闭修改密码模态框（如果是修改密码）
           fetchUserInfo();
+        }else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+          Cookies.remove("jwtToken");
+          Cookies.remove("userEmail");
+          messageApi.open({
+            type: "error",
+            content: "JWT token无效或过期，正在跳转回登录界面...",
+          }).then(() => {
+            router.push("/");
+          });
         } else {
           messageApi.open({
             type: 'error',
