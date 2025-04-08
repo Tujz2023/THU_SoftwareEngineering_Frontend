@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router"; // 引入 useRouter
 import Cookies from "js-cookie"; // 引入 js-cookie
-import { Input, Button, Layout, List, Avatar, Typography, message } from "antd";
+import { Input, Button, Layout, List, Avatar, Typography, message, Badge } from "antd";
 import { MessageOutlined, TeamOutlined, SettingOutlined, PictureOutlined, SmileOutlined, MoreOutlined,ContactsOutlined} from "@ant-design/icons";
 import 'antd/dist/reset.css';
 import SettingsDrawer from "../components/SettingsDrawer";
 import FriendsListDrawer from "../components/FriendsListDrawer";
 import GroupManagementDrawer from "../components/GroupManagementDrawer";
 import { DEFAULT_AVATAR } from "../constants/avatar";
+import { FriendRequest } from "../utils/types";
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -61,12 +62,14 @@ const ChatPage = () => {
   const router = useRouter(); // 初始化 useRouter
   const [showAlert, setShowAlert] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
+  const [unhandleRequests, setUnhandleRequests] = useState(0);
+  
 
   // 从 Cookie 中获取 JWT Token
   const token = Cookies.get("jwtToken");
 
   const fetchUserInfo = () => {
-    console.log("fetching user info...");
     fetch("/api/account/info", {
       method: "GET",
       headers: {
@@ -102,13 +105,56 @@ const ChatPage = () => {
       });
   };
 
+  const fetchFriendRequests = async () => {
+    const token = Cookies.get("jwtToken");
+    if (!token) {
+      messageApi.error("未登录，请先登录");
+      return;
+    }
+  
+    try {
+      const response = await fetch("/api/friend_requests", {
+        method: "GET",
+        headers: {
+          Authorization: `${token}`,
+        },
+      });
+  
+      const res = await response.json();
+
+      if (res.code === 0) {
+        const requests = res.requests;
+        setFriendRequests(res.requests);
+        const unhandledCount = requests.filter((request: FriendRequest) => request.status === 0).length;
+        setUnhandleRequests(unhandledCount);
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.open({
+          type: "error",
+          content: "JWT token无效或过期，正在跳转回登录界面...",
+        }).then(() => {
+          router.push("/");
+        });
+      } else if (res.code === -7) {
+        setFriendRequests([]);
+      } else {
+        messageApi.error(res.info || "获取好友申请失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    }
+  };
+
   // useEffect(() => {
   //   if (isDrawerVisible) {
   //     fetchUserInfo();
   //   }
   // }, [isDrawerVisible]);
+
   useEffect(() => {
     fetchUserInfo();
+    fetchFriendRequests();   // TODO: 改为获取到好友申请的websocket消息之后调用
   }, [])
 
   // 检查 JWT Token 的有效性
@@ -185,7 +231,24 @@ const ChatPage = () => {
 
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px" }}>
               <MessageOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("MessageCircle")} />
-              <ContactsOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Users")} />
+              {/* <ContactsOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Users")} /> */}
+              <Badge
+                count={unhandleRequests > 0 ? unhandleRequests : null}
+                offset={[0, 0]} // 调整徽章的位置
+                style={{
+                  backgroundColor: '#f5222d', // 红色原点的颜色
+                  color: '#ffffff', // 设置徽章中数字的颜色
+                  fontSize: '10px', // 设置徽章中数字的字体大小
+                  minWidth: '16px', // 设置徽章的最小宽度
+                  height: '16px', // 设置徽章的高度
+                  lineHeight: '16px', // 设置徽章的行高以垂直居中数字
+                  padding: '0', // 设置徽章的内边距为0
+                  borderRadius: '50%', // 保持徽章为圆形
+                  display: 'inline-block', // 确保徽章作为行内块显示
+                }}
+              >
+                <ContactsOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Users")} />
+              </Badge>
               <TeamOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Groups")} /> {/* 分组图标 */}
               <SettingOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Settings")} />
             </div>
@@ -281,6 +344,9 @@ const ChatPage = () => {
           <FriendsListDrawer
             visible={isFriendsDrawerVisible}
             onClose={() => setIsFriendsDrawerVisible(false)}
+            fetchFriendRequests={fetchFriendRequests}
+            friendRequests={friendRequests}
+            unhandleRequests={unhandleRequests}
           />
 
           {/* 分组管理抽屉 */}

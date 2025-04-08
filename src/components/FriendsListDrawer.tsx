@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router"; // 引入 useRouter
-import { Drawer, Input, List, Avatar, Typography, Button, message, Modal } from "antd";
+import { Drawer, Input, List, Avatar, Typography, Button, message, Modal, Badge } from "antd";
 import { UserAddOutlined, RedoOutlined } from "@ant-design/icons"; // 引入图标
 import Cookies from "js-cookie";
 import SearchUserDrawer from "./SearchUserDrawer";
 import FriendRequestDetails from "./FriendRequestDetails";
+import { FriendRequest } from "../utils/types";
 
 const { Title } = Typography;
 
@@ -16,20 +17,12 @@ interface Friend {
   deleted?: boolean;
 }
 
-interface FriendRequest {
-  sender_user_id: string;
-  receiver_user_id: string; 
-  user_email: string;
-  user_name: string;
-  avatar: string;
-  message: string;
-  created_at: string;
-  status: number;
-}
-
 interface FriendsListDrawerProps {
   visible: boolean;
   onClose: () => void;
+  fetchFriendRequests: () => Promise<void>; // 添加这个属性
+  friendRequests: FriendRequest[];
+  unhandleRequests: number;
 }
 
 const drawerStyles = {
@@ -53,11 +46,11 @@ const modalStyles = {
   },
 };
 
-const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose }) => {
+const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose, fetchFriendRequests, friendRequests, unhandleRequests }) => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [filteredFriends, setFilteredFriends] = useState<Friend[]>([]); // 新增状态，用于存储过滤后的好友列表
   const [searchKeyword, setSearchKeyword] = useState(""); // 新增状态，用于存储搜索关键字
-  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
+  // const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [isRequestsModalVisible, setIsRequestsModalVisible] = useState(false);
   const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<FriendRequest | undefined>(undefined);
@@ -122,43 +115,43 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
     }
   };
 
-  const fetchFriendRequests = async () => {
-    const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
+  // const fetchFriendRequests = async () => {
+  //   const token = Cookies.get("jwtToken");
+  //   if (!token) {
+  //     messageApi.error("未登录，请先登录");
+  //     return;
+  //   }
 
-    try {
-      const response = await fetch("/api/friend_requests", {
-        method: "GET",
-        headers: {
-          Authorization: `${token}`,
-        },
-      });
+  //   try {
+  //     const response = await fetch("/api/friend_requests", {
+  //       method: "GET",
+  //       headers: {
+  //         Authorization: `${token}`,
+  //       },
+  //     });
 
-      const res = await response.json();
+  //     const res = await response.json();
 
-      if (res.code === 0) {
-        setFriendRequests(res.requests);
-      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
-        Cookies.remove("jwtToken");
-        Cookies.remove("userEmail");
-        messageApi.open({
-          type: "error",
-          content: "JWT token无效或过期，正在跳转回登录界面...",
-        }).then(() => {
-          router.push("/");
-        });
-      } else if (res.code === -7) {
-        setFriendRequests([]);
-      } else {
-        messageApi.error(res.info || "获取好友申请失败");
-      }
-    } catch (error) {
-      messageApi.error("网络错误，请稍后重试");
-    }
-  };
+  //     if (res.code === 0) {
+  //       setFriendRequests(res.requests);
+  //     } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+  //       Cookies.remove("jwtToken");
+  //       Cookies.remove("userEmail");
+  //       messageApi.open({
+  //         type: "error",
+  //         content: "JWT token无效或过期，正在跳转回登录界面...",
+  //       }).then(() => {
+  //         router.push("/");
+  //       });
+  //     } else if (res.code === -7) {
+  //       setFriendRequests([]);
+  //     } else {
+  //       messageApi.error(res.info || "获取好友申请失败");
+  //     }
+  //   } catch (error) {
+  //     messageApi.error("网络错误，请稍后重试");
+  //   }
+  // };
 
   const handleAcceptRequest = async (senderId: string, receiverId: string) => {
     const token = Cookies.get("jwtToken");
@@ -405,7 +398,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
             }}
           />
         </div>
-
+        
         <Button
           type="primary"
           style={{
@@ -420,6 +413,22 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
             fetchFriendRequests();
           }}
         >
+          <Badge
+            count={unhandleRequests > 0 ? unhandleRequests : null}
+            offset={[85, -40]} // 调整徽章的位置
+            style={{
+              backgroundColor: '#f5222d', // 红色原点的颜色
+              color: '#ffffff', // 设置徽章中数字的颜色
+              fontSize: '10px', // 设置徽章中数字的字体大小
+              minWidth: '16px', // 设置徽章的最小宽度
+              height: '16px', // 设置徽章的高度
+              lineHeight: '16px', // 设置徽章的行高以垂直居中数字
+              padding: '0', // 设置徽章的内边距为0
+              borderRadius: '50%', // 保持徽章为圆形
+              display: 'inline-block', // 确保徽章作为行内块显示
+            }}
+          >
+          </Badge>
           好友请求
         </Button>
 
@@ -524,10 +533,10 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose 
               actions={[
                 <Button
                   type="link"
-                  style={{ color: "#4caf50" }}
+                  style={{ color: request.status === 0 ? "#0000ff" : "#4caf50" }}
                   onClick={() => handleViewDetails(request)}
                 >
-                  查看详情
+                  {request.status === 0 ? "待处理" : "查看详情"}
                 </Button>,
               ]}
             >

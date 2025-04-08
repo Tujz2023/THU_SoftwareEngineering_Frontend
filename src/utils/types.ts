@@ -1,11 +1,10 @@
-export type Board = (0 | 1)[][];
-
-/**
- * @note 用于前后端交互的 Board 数据格式
- */
-export interface BoardMetaData {
-    id: number;
-    boardName: string;
-    createdAt: number;
-    userName: string;
+export interface FriendRequest {
+  sender_user_id: string;
+  receiver_user_id: string; 
+  user_email: string;
+  user_name: string;
+  avatar: string;
+  message: string;
+  created_at: string;
+  status: number;
 }
