@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Drawer, List, Input, Button, Typography, message, Avatar, Modal, Dropdown, Menu, Divider, MenuProps } from "antd";
-import { PlusOutlined, UserAddOutlined } from "@ant-design/icons";
+import { PlusOutlined, UserAddOutlined, RedoOutlined } from "@ant-design/icons";
 import Cookies from "js-cookie";
 import { useRouter } from "next/router";
 
@@ -474,6 +474,14 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
     }
   };
 
+  const handleRefresh = () => {
+    if (!selectedGroupId) {
+      messageApi.error("请先选择一个分组");
+      return;
+    }
+    fetchGroupDetails(selectedGroupId);
+  }
+
   useEffect(() => {
     if (visible) {
       fetchGroups();
@@ -619,6 +627,18 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
                   分组成员
                 </Divider>
               </div>
+              <RedoOutlined
+                onClick={handleRefresh}
+                style={{
+                  fontSize: "20px",
+                  color: "#4caf50",
+                  cursor: "pointer",
+                  transition: "color 0.3s",
+                  margin: "0 5px", // 添加左右外边距
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#66bb6a")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#4caf50")}
+              />
               <UserAddOutlined
                 onClick={fetchFriendList}
                 style={{
@@ -626,6 +646,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
                   color: "#4caf50",
                   cursor: "pointer",
                   transition: "color 0.3s",
+                  margin: "0 5px", // 添加左右外边距
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#66bb6a")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#4caf50")}
