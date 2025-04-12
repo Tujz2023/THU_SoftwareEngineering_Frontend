@@ -10,15 +10,20 @@ import GroupManagementDrawer from "../components/GroupManagementDrawer";
 import { DEFAULT_AVATAR } from "../constants/avatar";
 import { FriendRequest } from "../utils/types";
 
+import { useMessageListener } from "../utils/websocket";
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 
-interface Contact {
-  id: number;
+interface Conversation {
+  id: string;
   name: string;
   avatar: string;
-  status: "online" | "offline" | "away";
-  lastSeen?: string;
+  lastMessage: string;
+  lastMessageTime: string;
+  isChatGroup: boolean;
+  isTop: boolean;
+  noticeAble: boolean;
+  unreadCount: number;
 }
 
 interface Message {
@@ -27,33 +32,13 @@ interface Message {
   time: string;
 }
 
-const contacts: Contact[] = [
-  { id: 1, name: "Vincent Porter", avatar: DEFAULT_AVATAR, status: "offline", lastSeen: "7 mins ago" },
-  { id: 2, name: "Aiden Chavez", avatar: DEFAULT_AVATAR, status: "online" },
-  { id: 3, name: "Mike Thomas", avatar: DEFAULT_AVATAR, status: "online" },
-  { id: 4, name: "Christian Kelly", avatar: DEFAULT_AVATAR, status: "offline", lastSeen: "10 hours ago" },
-  { id: 5, name: "Monica Ward", avatar: DEFAULT_AVATAR, status: "online" },
-  { id: 6, name: "Dean Henry", avatar: DEFAULT_AVATAR, status: "offline", lastSeen: "Oct 28" },
-];
-
-const initialMessages: { [key: number]: Message[] } = {
-  1: [
-    { sender: "me", text: "Hi Vincent, how are you?", time: "10:10 AM" },
-    { sender: "Vincent Porter", text: "I'm good, thanks!", time: "10:12 AM" },
-  ],
-  2: [
-    { sender: "me", text: "Hi Aiden, how are you? How is the project coming along?", time: "10:10 AM" },
-    { sender: "Aiden Chavez", text: "Are we meeting today?", time: "10:12 AM" },
-    { sender: "Aiden Chavez", text: "Project has been already finished and I have results to show you.", time: "10:15 AM" },
-  ],
-  // Add more initial messages for other contacts if needed
-};
 
 const ChatPage = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const [search, setSearch] = useState("");
-  const [selectedContactId, setSelectedContactId] = useState<number | undefined>(2); // Default to Aiden Chavez
-  const [messages, setMessages] = useState<{ [key: number]: Message[] }>(initialMessages);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | undefined>();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [messages, setMessages] = useState<{ [key: string]: Message[] }>({});
   const [input, setInput] = useState("");
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [isFriendsDrawerVisible, setIsFriendsDrawerVisible] = useState(false); // 控制好友列表抽屉的显示
@@ -65,10 +50,12 @@ const ChatPage = () => {
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [unhandleRequests, setUnhandleRequests] = useState(0);
   
-
   // 从 Cookie 中获取 JWT Token
   const token = Cookies.get("jwtToken");
-
+  // WebSocket 监听器
+  if (token) {
+    useMessageListener(token);
+  }
   const fetchUserInfo = () => {
     fetch("/api/account/info", {
       method: "GET",
@@ -146,6 +133,38 @@ const ChatPage = () => {
     }
   };
 
+  //TODO
+  // 获取会话列表 
+  const fetchConversations = async () => {
+    if (!token) {
+      messageApi.error("未登录，请先登录");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/conversations", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+      });
+
+      const res = await response.json();
+      if (res.code === 0) {
+        setConversations(res.conversation);
+      } else if (res.code === -2) {
+        Cookies.remove("jwtToken");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+        router.push("/");
+      } else {
+        messageApi.error(res.info || "获取会话列表失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    }
+  };
+
   // useEffect(() => {
   //   if (isDrawerVisible) {
   //     fetchUserInfo();
@@ -154,6 +173,7 @@ const ChatPage = () => {
 
   useEffect(() => {
     fetchUserInfo();
+    fetchConversations();
     fetchFriendRequests();   // TODO: 改为获取到好友申请的websocket消息之后调用
   }, [])
 
@@ -177,17 +197,17 @@ const ChatPage = () => {
   }, [showAlert]);
 
   const handleSendMessage = () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !selectedConversationId) return;
     const newMessage = { sender: "me", text: input, time: "Now" };
     setMessages((prevMessages) => ({
       ...prevMessages,
-      [selectedContactId!]: [...prevMessages[selectedContactId!], newMessage],
+      [selectedConversationId]: [...(prevMessages[selectedConversationId] || []), newMessage],
     }));
     setInput("");
   };
 
-  const handleContactClick = (contactId: number) => {
-    setSelectedContactId(contactId);
+  const handleConversationClick = (conversationId: string) => {
+    setSelectedConversationId(conversationId);
   };
 
   const handleIconClick = (iconName: string) => {
@@ -254,30 +274,30 @@ const ChatPage = () => {
             </div>
           </Sider>
 
-          {/* Contact List */}
-          <Sider width={300} style={{ background: "#f0f0f0", borderRight: "1px solid #d9d9d9" }}>
-            <div style={{ padding: "16px" }}>
-              <Input.Search
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ marginBottom: "16px" }}
-              />
-              <List
-                itemLayout="horizontal"
-                dataSource={contacts.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))}
-                renderItem={(contact) => (
-                  <List.Item onClick={() => handleContactClick(contact.id)} style={{ cursor: "pointer", background: "#f0f0f0" }}>
-                    <List.Item.Meta
-                      avatar={<Avatar src={contact.avatar} />}
-                      title={contact.name}
-                      description={contact.status === "online" ? "🟢 Online" : `🔴 Left ${contact.lastSeen}`}
-                    />
-                  </List.Item>
-                )}
-              />
-            </div>
-          </Sider>
+          {/* 会话列表 */}
+        <Sider width={300} style={{ background: "#f0f0f0", borderRight: "1px solid #d9d9d9" }}>
+          <div style={{ padding: "16px" }}>
+            <Input.Search
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ marginBottom: "16px" }}
+            />
+            <List
+              itemLayout="horizontal"
+              dataSource={conversations.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))}
+              renderItem={(conversation) => (
+                <List.Item onClick={() => handleConversationClick(conversation.id)} style={{ cursor: "pointer" }}>
+                  <List.Item.Meta
+                    avatar={<Avatar src={conversation.avatar} />}
+                    title={conversation.name}
+                    description={conversation.lastMessage}
+                  />
+                </List.Item>
+              )}
+            />
+          </div>
+        </Sider>
 
           <Layout>
             {/* Header */}
@@ -291,13 +311,13 @@ const ChatPage = () => {
                 height: "80px",
               }}
             >
-              <Avatar src={contacts.find((c) => c.id === selectedContactId)?.avatar} size="large" />
+              <Avatar src={conversations.find((c) => c.id === selectedConversationId)?.avatar} size="large" />
               <div style={{ marginLeft: "16px", display: "flex", flexDirection: "column" }}>
-                <Text strong>{contacts.find((c) => c.id === selectedContactId)?.name}</Text>
+                <Text strong>{conversations.find((c) => c.id === selectedConversationId)?.name}</Text>
                 <Text type="secondary">
-                  {contacts.find((c) => c.id === selectedContactId)?.status === "online"
-                    ? "🟢 Online"
-                    : `🔴 Last seen: ${contacts.find((c) => c.id === selectedContactId)?.lastSeen}`}
+                  {conversations.find((c) => c.id === selectedConversationId)?.isChatGroup
+                    ? "群聊"
+                    : `🔴 最后一条消息时间: ${conversations.find((c) => c.id === selectedConversationId)?.lastMessageTime}`}
                 </Text>
               </div>
               <div style={{ marginLeft: "auto", display: "flex", gap: "16px" }}>
@@ -309,9 +329,9 @@ const ChatPage = () => {
 
             {/* Chat Content */}
             <Content style={{ padding: "16px", background: "#fff", overflowY: "auto" }}>
-              {messages[selectedContactId!]?.map((msg, index) => (
+              {messages[selectedConversationId!]?.map((msg, index) => (
                 <div key={index} style={{ display: "flex", justifyContent: msg.sender === "me" ? "flex-end" : "flex-start", marginBottom: "16px" }}>
-                  <div style={{ maxWidth: "60%", padding: "12px", borderRadius: "8px", background: msg.sender === "me" ? "#8A2BE2" : "#f0f0f0", color: msg.sender === "me" ? "#fff" : "#000" }}>
+                  <div style={{ maxWidth: "60%", padding: "12px", borderRadius: "8px", background: msg.sender === "me" ? "#8A2BE2" : "#f0f0f0" }}>
                     <p style={{ margin: 0 }}>{msg.text}</p>
                     <Text type="secondary" style={{ fontSize: "12px" }}>{msg.time}</Text>
                   </div>
