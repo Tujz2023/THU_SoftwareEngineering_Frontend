@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Dispatch, SetStateAction } from "react";
 import { useRouter } from "next/router"; // 引入 useRouter
 import { Drawer, Input, List, Avatar, Typography, Button, message, Modal, Badge } from "antd";
 import { UserAddOutlined, RedoOutlined } from "@ant-design/icons"; // 引入图标
@@ -23,6 +23,8 @@ interface FriendsListDrawerProps {
   fetchFriendRequests: () => Promise<void>; // 添加这个属性
   friendRequests: FriendRequest[];
   unhandleRequests: number;
+  websocket: boolean;
+  setWebsocket: Dispatch<SetStateAction<boolean>>;
 }
 
 const drawerStyles = {
@@ -46,7 +48,7 @@ const modalStyles = {
   },
 };
 
-const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose, fetchFriendRequests, friendRequests, unhandleRequests }) => {
+const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose, fetchFriendRequests, friendRequests, unhandleRequests, websocket, setWebsocket }) => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [filteredFriends, setFilteredFriends] = useState<Friend[]>([]); // 新增状态，用于存储过滤后的好友列表
   const [searchKeyword, setSearchKeyword] = useState(""); // 新增状态，用于存储搜索关键字
@@ -114,6 +116,15 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose,
       messageApi.error("网络错误，请稍后重试");
     }
   };
+
+  
+  useEffect(() => {
+    if (websocket === true){
+      fetchFriends();
+      setWebsocket(false);
+    }
+  }, [websocket])
+
 
   // const fetchFriendRequests = async () => {
   //   const token = Cookies.get("jwtToken");

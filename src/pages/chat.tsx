@@ -7,7 +7,6 @@ import 'antd/dist/reset.css';
 import SettingsDrawer from "../components/SettingsDrawer";
 import FriendsListDrawer from "../components/FriendsListDrawer";
 import GroupManagementDrawer from "../components/GroupManagementDrawer";
-import { DEFAULT_AVATAR } from "../constants/avatar";
 import { FriendRequest } from "../utils/types";
 
 import { useMessageListener } from "../utils/websocket";
@@ -49,13 +48,13 @@ const ChatPage = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [unhandleRequests, setUnhandleRequests] = useState(0);
+
+  const [friendListDrwaerWebsocket, setFriendListDrwaerWebsocket] = useState(false);
+  const [groupDrawerWebsocket, setGroupDrawerWebsocket] = useState(false);
   
   // 从 Cookie 中获取 JWT Token
   const token = Cookies.get("jwtToken");
-  // WebSocket 监听器
-  if (token) {
-    useMessageListener(token);
-  }
+
   const fetchUserInfo = () => {
     fetch("/api/account/info", {
       method: "GET",
@@ -173,9 +172,27 @@ const ChatPage = () => {
 
   useEffect(() => {
     fetchUserInfo();
-    fetchConversations();
+    // fetchConversations();
     fetchFriendRequests();   // TODO: 改为获取到好友申请的websocket消息之后调用
   }, [])
+
+  const fn = (param: number) => {
+    if (param === 1) {} // updateConversations();
+    else if (param === 2) fetchFriendRequests();
+    else if (param === 3) {
+      if (isFriendsDrawerVisible === true) {
+        setFriendListDrwaerWebsocket(true)
+      }
+      if (isGroupDrawerVisible === true) {
+        setGroupDrawerWebsocket(true)
+      }
+    } //删除需要的函数
+    else {alert('尚未实现...')}
+  }
+
+  if (token) {
+    useMessageListener(token, fn);
+  }
 
   // 检查 JWT Token 的有效性
   useEffect(() => {
@@ -367,12 +384,16 @@ const ChatPage = () => {
             fetchFriendRequests={fetchFriendRequests}
             friendRequests={friendRequests}
             unhandleRequests={unhandleRequests}
+            websocket={friendListDrwaerWebsocket}
+            setWebsocket={setFriendListDrwaerWebsocket}
           />
 
           {/* 分组管理抽屉 */}
           <GroupManagementDrawer
             visible={isGroupDrawerVisible}
             onClose={() => setIsGroupDrawerVisible(false)}
+            websocket={groupDrawerWebsocket}
+            setWebsocket={setGroupDrawerWebsocket}
           />
         </Layout>
     </>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Dispatch, SetStateAction } from "react";
 import { Drawer, List, Input, Button, Typography, message, Avatar, Modal, Dropdown, Menu, Divider, MenuProps } from "antd";
 import { PlusOutlined, UserAddOutlined, RedoOutlined } from "@ant-design/icons";
 import Cookies from "js-cookie";
@@ -30,6 +30,8 @@ interface Friend {
 interface GroupManagementDrawerProps {
   visible: boolean;
   onClose: () => void;
+  websocket: boolean;
+  setWebsocket: Dispatch<SetStateAction<boolean>>;
 }
 
 const drawerStyles = {
@@ -45,7 +47,7 @@ const drawerStyles = {
   },
 };
 
-const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, onClose }) => {
+const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, onClose, websocket, setWebsocket }) => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | undefined>(undefined);
   const [members, setMembers] = useState<Member[]>([]);
@@ -487,6 +489,18 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
       fetchGroups();
     }
   }, [visible]);
+
+  useEffect(() => {
+    if (websocket === true) {
+      if (selectedGroupId !== undefined) {
+        fetchGroupDetails(selectedGroupId);
+      }
+      if (isFriendListVisible === true) {
+        fetchFriendList();
+      }
+      setWebsocket(false);
+    }
+  }, [websocket])
 
   // 修改后的菜单
   const menu = (group: Group): MenuProps['items'] => [

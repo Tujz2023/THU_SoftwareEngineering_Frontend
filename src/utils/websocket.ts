@@ -2,14 +2,14 @@ import { useEffect } from 'react';
 
 
 // 使用 React 的 useEffect 钩子来监听 WebSocket 消息
-export const useMessageListener = (token: string) => {
+export const useMessageListener = (token: string, fn: (param: number) => void) => {
   useEffect(() => {
     let websocket: WebSocket | null = null;
     let isClosedManually = false;
 
     // 建立 WebSocket 连接
     const initializeWebSocket = () => {
-      const wsUrl = `https://backend-eyjhbgci.app.spring25b.secoder.net/?token=${token}`.replace("https://", "ws://");
+      const wsUrl = `https://backend-eyjhbgci.app.spring25b.secoder.net/ws/?token=${token}`.replace("https://", "wss://");
       websocket = new WebSocket(wsUrl);
 
       // WebSocket 连接成功
@@ -19,12 +19,14 @@ export const useMessageListener = (token: string) => {
 
       // 接收 WebSocket 消息
       websocket.onmessage = async (event) => {
+        console.log("接收到消息");
         if (event.data) {
           try {
             const message = JSON.parse(event.data);
-            if (message.type === "notify") {
-              //onNotify();
-            }
+            if (message.type === "notify") fn(1);
+            else if (message.type === "request_message") fn(2);
+            else if (message.type === "delete_friend") fn(3);
+            else fn(4);
           } catch (error) {
             console.error("解析 WebSocket 消息失败:", error);
           }
@@ -51,5 +53,5 @@ export const useMessageListener = (token: string) => {
         websocket.close();
       }
     };
-  }, [token]);
+  }, [token, fn]);
 };

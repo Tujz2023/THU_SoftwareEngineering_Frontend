@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'; // 引入 framer-motion
 import Cookies from 'js-cookie'; // 引入 js-cookie 库
 import { encrypt, decrypt } from '../utils/crypto';
 
-const { Title} = Typography;
+const { Title } = Typography;
 
 const WelcomePage = () => {
   const [messageApi, contextHolder] = message.useMessage();
