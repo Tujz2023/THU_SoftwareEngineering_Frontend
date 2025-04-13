@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 // 使用 React 的 useEffect 钩子来监听 WebSocket 消息
 export const useMessageListener = (token: string, fn: (param: number) => void) => {
   useEffect(() => {
-    let websocket: WebSocket | null = null;
+    let websocket: WebSocket | undefined = undefined;
     let isClosedManually = false;
 
     // 建立 WebSocket 连接

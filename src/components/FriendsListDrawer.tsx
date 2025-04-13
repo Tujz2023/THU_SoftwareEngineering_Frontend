@@ -425,7 +425,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose,
           }}
         >
           <Badge
-            count={unhandleRequests > 0 ? unhandleRequests : null}
+            count={unhandleRequests > 0 ? unhandleRequests : undefined}
             offset={[85, -40]} // 调整徽章的位置
             style={{
               backgroundColor: '#f5222d', // 红色原点的颜色

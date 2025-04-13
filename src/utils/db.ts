@@ -22,37 +22,37 @@ export interface Message {
   timestamp: string;
 }
 
-class ChatDatabase extends Dexie {
-  conversations: Dexie.Table<Conversation, string>;
-  messages: Dexie.Table<Message, string>;
+// class ChatDatabase extends Dexie {
+//   conversations: Dexie.Table<Conversation, string>;
+//   messages: Dexie.Table<Message, string>;
 
-  constructor() {
-    super("ChatDatabase");
+//   constructor() {
+//     super("ChatDatabase");
 
-    this.version(1).stores({
-      conversations: "id, name, lastMessage, lastMessageTime, isChatGroup, isTop, noticeAble, unreadCount",
-      messages: "id, conversationId, senderId, content, timestamp",
-    });
+//     this.version(1).stores({
+//       conversations: "id, name, lastMessage, lastMessageTime, isChatGroup, isTop, noticeAble, unreadCount",
+//       messages: "id, conversationId, senderId, content, timestamp",
+//     });
 
-    this.conversations = this.table("conversations");
-    this.messages = this.table("messages");
-  }
+//     this.conversations = this.table("conversations");
+//     this.messages = this.table("messages");
+//   }
 
-  async cacheConversations(conversations: Conversation[]) {
-    await this.conversations.bulkPut(conversations);
-  }
+//   async cacheConversations(conversations: Conversation[]) {
+//     await this.conversations.bulkPut(conversations);
+//   }
 
-  async cacheMessages(conversationId: string, messages: Message[]) {
-    await this.messages.bulkPut(messages);
-  }
+//   async cacheMessages(conversationId: string, messages: Message[]) {
+//     await this.messages.bulkPut(messages);
+//   }
 
-  async getConversations() {
-    return await this.conversations.toArray();
-  }
+//   async getConversations() {
+//     return await this.conversations.toArray();
+//   }
 
-  async getMessages(conversationId: string) {
-    return await this.messages.where("conversationId").equals(conversationId).toArray();
-  }
-}
+//   async getMessages(conversationId: string) {
+//     return await this.messages.where("conversationId").equals(conversationId).toArray();
+//   }
+// }
 
-export default new ChatDatabase();
+// export default new ChatDatabase();

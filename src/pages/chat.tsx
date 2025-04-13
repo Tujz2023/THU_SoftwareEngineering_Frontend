@@ -177,8 +177,7 @@ const ChatPage = () => {
   }, [])
 
   const fn = (param: number) => {
-    if (param === 1) {} // updateConversations();
-    else if (param === 2) fetchFriendRequests();
+    if (param === 2) fetchFriendRequests();
     else if (param === 3) {
       if (isFriendsDrawerVisible === true) {
         setFriendListDrwaerWebsocket(true)
@@ -270,7 +269,7 @@ const ChatPage = () => {
               <MessageOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("MessageCircle")} />
               {/* <ContactsOutlined style={{ fontSize: "24px", color: "#fff", cursor: "pointer" }} onClick={() => handleIconClick("Users")} /> */}
               <Badge
-                count={unhandleRequests > 0 ? unhandleRequests : null}
+                count={unhandleRequests > 0 ? unhandleRequests : undefined}
                 offset={[0, 0]} // 调整徽章的位置
                 style={{
                   backgroundColor: '#f5222d', // 红色原点的颜色
