@@ -1,13 +1,13 @@
 import React, { useState, useEffect, Dispatch, SetStateAction } from "react";
-import { useRouter } from "next/router"; // 引入 useRouter
-import { Drawer, Input, List, Avatar, Typography, Button, message, Modal, Badge } from "antd";
-import { UserAddOutlined, RedoOutlined } from "@ant-design/icons"; // 引入图标
+import { useRouter } from "next/router";
+import { Drawer, Input, List, Avatar, Typography, Button, message, Modal, Badge, Empty, Divider, Spin, Tag } from "antd";
+import { UserAddOutlined, RedoOutlined, SearchOutlined, MessageOutlined, DeleteOutlined, InfoCircleOutlined, MailOutlined, TeamOutlined, ExclamationCircleOutlined, UserOutlined, CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined } from "@ant-design/icons";
 import Cookies from "js-cookie";
 import SearchUserDrawer from "./SearchUserDrawer";
 import FriendRequestDetails from "./FriendRequestDetails";
 import { FriendRequest } from "../utils/types";
 
-const { Title } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
 interface Friend {
   id: string;
@@ -20,39 +20,25 @@ interface Friend {
 interface FriendsListDrawerProps {
   visible: boolean;
   onClose: () => void;
-  fetchFriendRequests: () => Promise<void>; // 添加这个属性
+  fetchFriendRequests: () => Promise<void>;
   friendRequests: FriendRequest[];
   unhandleRequests: number;
   websocket: boolean;
   setWebsocket: Dispatch<SetStateAction<boolean>>;
 }
 
-const drawerStyles = {
-  body: {
-    background: "linear-gradient(135deg, #f0f8ff, #e6f7ff)",
-    borderRadius: "16px 0 0 16px",
-    padding: "16px",
-  },
-  header: {
-    background: "#4caf50",
-    color: "#fff",
-    borderRadius: "16px 0 0 0",
-  },
-};
-
-const modalStyles = {
-  body: {
-    background: "linear-gradient(135deg, #f9f9f9, #e6f7ff)",
-    padding: "16px",
-    borderRadius: "8px",
-  },
-};
-
-const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose, fetchFriendRequests, friendRequests, unhandleRequests, websocket, setWebsocket }) => {
+const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ 
+  visible, 
+  onClose, 
+  fetchFriendRequests, 
+  friendRequests, 
+  unhandleRequests, 
+  websocket, 
+  setWebsocket 
+}) => {
   const [friends, setFriends] = useState<Friend[]>([]);
-  const [filteredFriends, setFilteredFriends] = useState<Friend[]>([]); // 新增状态，用于存储过滤后的好友列表
-  const [searchKeyword, setSearchKeyword] = useState(""); // 新增状态，用于存储搜索关键字
-  // const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
+  const [filteredFriends, setFilteredFriends] = useState<Friend[]>([]);
+  const [searchKeyword, setSearchKeyword] = useState("");
   const [isRequestsModalVisible, setIsRequestsModalVisible] = useState(false);
   const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<FriendRequest | undefined>(undefined);
@@ -61,8 +47,9 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose,
   const [isFriendModalVisible, setIsFriendModalVisible] = useState(false);
   const [friendDetails, setFriendDetails] = useState<any>(undefined);
   const [messageApi, contextHolder] = message.useMessage();
-  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false); // 控制删除确认 Modal 的显示
-  const [friendToDelete, setFriendToDelete] = useState<Friend | undefined>(undefined); // 当前要删除的好友
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [friendToDelete, setFriendToDelete] = useState<Friend | undefined>(undefined);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -72,17 +59,28 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose,
   }, [visible]);
 
   useEffect(() => {
-    // 根据搜索关键字过滤好友列表
-    const filtered = friends.filter(
-      (friend) =>
-        friend.name.toLowerCase().includes(searchKeyword.toLowerCase()) ||
-        friend.email.toLowerCase().includes(searchKeyword.toLowerCase())
-    );
-    setFilteredFriends(filtered);
-  }, [searchKeyword, friends]); // 当搜索关键字或好友列表变化时重新过滤
+    if (searchKeyword) {
+      const filtered = friends.filter(
+        (friend) =>
+          friend.name.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+          friend.email.toLowerCase().includes(searchKeyword.toLowerCase())
+      );
+      setFilteredFriends(filtered);
+    } else {
+      setFilteredFriends(friends);
+    }
+  }, [searchKeyword, friends]);
+
+  useEffect(() => {
+    if (websocket === true) {
+      fetchFriends();
+      setWebsocket(false);
+    }
+  }, [websocket]);
 
   const fetchFriends = async () => {
     const token = Cookies.get("jwtToken");
+    setLoading(true);
 
     try {
       const response = await fetch("/api/friends", {
@@ -99,7 +97,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose,
           a.name.localeCompare(b.name, "zh-CN")
         );
         setFriends(sortedFriends);
-        setFilteredFriends(sortedFriends); // 初始化过滤后的好友列表
+        setFilteredFriends(sortedFriends);
       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
@@ -114,55 +112,10 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose,
       }
     } catch (error) {
       messageApi.error("网络错误，请稍后重试");
+    } finally {
+      setLoading(false);
     }
   };
-
-  
-  useEffect(() => {
-    if (websocket === true){
-      fetchFriends();
-      setWebsocket(false);
-    }
-  }, [websocket])
-
-
-  // const fetchFriendRequests = async () => {
-  //   const token = Cookies.get("jwtToken");
-  //   if (!token) {
-  //     messageApi.error("未登录，请先登录");
-  //     return;
-  //   }
-
-  //   try {
-  //     const response = await fetch("/api/friend_requests", {
-  //       method: "GET",
-  //       headers: {
-  //         Authorization: `${token}`,
-  //       },
-  //     });
-
-  //     const res = await response.json();
-
-  //     if (res.code === 0) {
-  //       setFriendRequests(res.requests);
-  //     } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
-  //       Cookies.remove("jwtToken");
-  //       Cookies.remove("userEmail");
-  //       messageApi.open({
-  //         type: "error",
-  //         content: "JWT token无效或过期，正在跳转回登录界面...",
-  //       }).then(() => {
-  //         router.push("/");
-  //       });
-  //     } else if (res.code === -7) {
-  //       setFriendRequests([]);
-  //     } else {
-  //       messageApi.error(res.info || "获取好友申请失败");
-  //     }
-  //   } catch (error) {
-  //     messageApi.error("网络错误，请稍后重试");
-  //   }
-  // };
 
   const handleAcceptRequest = async (senderId: string, receiverId: string) => {
     const token = Cookies.get("jwtToken");
@@ -259,6 +212,8 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose,
       return;
     }
 
+    setFriendDetails(undefined); // 清除之前的数据
+
     try {
       const response = await fetch(`/api/manage_friends?friend_id=${friendId}`, {
         method: "GET",
@@ -314,7 +269,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose,
         messageApi.success(res.message || "删除好友成功");
         setIsDeleteModalVisible(false);
         setIsFriendModalVisible(false);
-        fetchFriends(); // 刷新好友列表
+        fetchFriends();
       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
@@ -349,150 +304,291 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose,
 
   const handleFriendListDrawerClose = () => {
     setSearchKeyword("");
-    onClose(); // 调用父组件的关闭方法
+    onClose();
   };
 
+  const getStatusBadge = (status: number) => {
+    const statusConfig: { [key: number]: { text: string; color: string; icon: React.ReactNode } } = {
+      0: { text: "等待处理", color: "#faad14", icon: <ClockCircleOutlined /> },
+      1: { text: "已同意", color: "#8A2BE2", icon: <CheckCircleOutlined /> },
+      2: { text: "已拒绝", color: "#ff4d4f", icon: <CloseCircleOutlined /> },
+    };
+    
+    return statusConfig[status] || { text: "未知", color: "#999", icon: <InfoCircleOutlined /> };
+  };
 
   return (
     <>
       {contextHolder}
 
       <Drawer
-        title={<span style={{ color: "#fff", fontWeight: "bold" }}>好友列表</span>}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <UserOutlined style={{ marginRight: 8, color: 'white' }} />
+            <span style={{ color: "#fff", fontWeight: "bold" }}>好友管理</span>
+          </div>
+        }
         placement="left"
         onClose={handleFriendListDrawerClose}
         open={visible}
         width="38vw"
         styles={{
-          body: drawerStyles.body,
-          header: drawerStyles.header,
+          body: {
+            background: "linear-gradient(135deg, #f9f9ff, #f0f0ff)",
+            borderRadius: "0 0 0 16px",
+            padding: "16px",
+          },
+          header: {
+            background: "linear-gradient(90deg, #8A2BE2, #7B1FA2)",
+            color: "#fff",
+            borderRadius: "16px 0 0 0",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+          },
+          mask: {
+            backdropFilter: "blur(2px)",
+            background: "rgba(0,0,0,0.4)",
+          },
+          wrapper: {
+            boxShadow: "0 0 20px rgba(0,0,0,0.15)",
+          }
         }}
+        maskClosable={true}
+        closeIcon={<div style={{ color: "white", fontSize: "16px" }}>✕</div>}
       >
-        <div style={{ display: "flex", alignItems: "center", marginBottom: "16px" }}>
-          <Input.Search
+        <div style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          marginBottom: "16px", 
+          background: "#fff", 
+          padding: "12px", 
+          borderRadius: "8px",
+          boxShadow: "0 2px 8px rgba(138, 43, 226, 0.1)",
+        }}>
+          <Input
             placeholder="搜索好友"
             value={searchKeyword}
-            onChange={(e) => setSearchKeyword(e.target.value)} // 更新搜索关键字
+            onChange={(e) => setSearchKeyword(e.target.value)}
+            prefix={<SearchOutlined style={{ color: '#8A2BE2' }} />}
             style={{
               flex: 1,
               borderRadius: "8px",
-              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+              border: "1px solid rgba(138, 43, 226, 0.2)",
             }}
           />
           <Button
-            type="text"
+            type="primary"
             shape="circle"
-            icon={<RedoOutlined style={{ fontSize: "18px", color: "#fff" }} />}
+            icon={<RedoOutlined />}
             onClick={() => {
               fetchFriends();
               setSearchKeyword("");
             }}
             style={{
               marginLeft: "8px",
-              backgroundColor: "#1890ff", // 假设刷新按钮背景色为蓝色
-              border: "none",
-              cursor: "pointer",
-              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+              backgroundColor: "#8A2BE2",
+              borderColor: "#8A2BE2",
+              boxShadow: "0 2px 6px rgba(138, 43, 226, 0.2)",
             }}
           />
           <Button
-            type="text"
+            type="primary"
             shape="circle"
-            icon={<UserAddOutlined style={{ fontSize: "18px", color: "#fff" }} />}
+            icon={<UserAddOutlined />}
             onClick={() => setIsSearchDrawerVisible(true)}
             style={{
               marginLeft: "8px",
-              backgroundColor: "#4caf50",
-              border: "none",
-              cursor: "pointer",
-              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+              backgroundColor: "#8A2BE2",
+              borderColor: "#8A2BE2",
+              boxShadow: "0 2px 6px rgba(138, 43, 226, 0.2)",
             }}
           />
         </div>
         
-        <Button
-          type="primary"
-          style={{
-            width: "100%",
-            marginBottom: "16px",
-            backgroundColor: "#4caf50",
-            borderColor: "#4caf50",
-            borderRadius: "8px",
-          }}
-          onClick={() => {
-            setIsRequestsModalVisible(true);
-            fetchFriendRequests();
-          }}
-        >
-          <Badge
-            count={unhandleRequests > 0 ? unhandleRequests : undefined}
-            offset={[85, -40]} // 调整徽章的位置
+        <div style={{ marginBottom: "16px" }}>
+          <Button
+            type="primary"
             style={{
-              backgroundColor: '#f5222d', // 红色原点的颜色
-              color: '#ffffff', // 设置徽章中数字的颜色
-              fontSize: '10px', // 设置徽章中数字的字体大小
-              minWidth: '16px', // 设置徽章的最小宽度
-              height: '16px', // 设置徽章的高度
-              lineHeight: '16px', // 设置徽章的行高以垂直居中数字
-              padding: '0', // 设置徽章的内边距为0
-              borderRadius: '50%', // 保持徽章为圆形
-              display: 'inline-block', // 确保徽章作为行内块显示
+              width: "100%",
+              backgroundColor: "#8A2BE2",
+              borderColor: "#8A2BE2",
+              borderRadius: "8px",
+              height: "44px",
+              boxShadow: "0 2px 8px rgba(138, 43, 226, 0.2)",
             }}
+            onClick={() => {
+              setIsRequestsModalVisible(true);
+              fetchFriendRequests();
+            }}
+            icon={<UserAddOutlined />}
           >
-          </Badge>
-          好友请求
-        </Button>
+            好友请求
+            {unhandleRequests > 0 && (
+              <Badge
+                count={unhandleRequests}
+                style={{
+                  backgroundColor: "#ff4d4f",
+                  boxShadow: "0 0 0 2px white",
+                  marginLeft: "8px",
+                }}
+              />
+            )}
+          </Button>
+        </div>
 
-        <List
-          dataSource={filteredFriends} // 使用过滤后的好友列表
-          renderItem={(friend) => (
-            <List.Item
-              style={{
-                borderRadius: "8px",
-                marginBottom: "8px",
-                background: "#fff",
-                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                padding: "12px",
-                cursor: "pointer",
-              }}
-              onClick={() => handleViewFriendDetails(friend)}
-            >
-              <List.Item.Meta
-                avatar={
-                  <Avatar
-                    src={friend.avatar}
-                    size={48}
-                    style={{
-                      border: "2px solid #4caf50",
-                      padding: "2px",
-                      borderRadius: "50%",
+        <div style={{ 
+          background: "#fff", 
+          borderRadius: "8px", 
+          padding: "16px",
+          boxShadow: "0 2px 8px rgba(138, 43, 226, 0.1)",
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '16px'
+          }}>
+            <Text strong style={{ color: '#8A2BE2', fontSize: '16px' }}>
+              好友列表 ({friends.length})
+            </Text>
+          </div>
+
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+              <Spin size="large" />
+            </div>
+          ) : filteredFriends.length > 0 ? (
+            <List
+              style={{ flex: 1, overflowY: 'auto' }}
+              dataSource={filteredFriends}
+              renderItem={(friend) => (
+                <List.Item
+                  style={{
+                    borderRadius: "8px",
+                    marginBottom: "12px",
+                    background: friend.deleted ? 
+                      "linear-gradient(to right, rgba(255, 77, 79, 0.02), rgba(255, 77, 79, 0.05))" :
+                      "linear-gradient(to right, rgba(138, 43, 226, 0.03), rgba(138, 43, 226, 0.07))",
+                    boxShadow: "0 2px 6px rgba(0, 0, 0, 0.05)",
+                    padding: "12px",
+                    cursor: "pointer",
+                    border: friend.deleted ? 
+                      "1px solid rgba(255, 77, 79, 0.1)" :
+                      "1px solid rgba(138, 43, 226, 0.1)",
+                    transition: "all 0.3s ease",
+                  }}
+                  onClick={() => handleViewFriendDetails(friend)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = friend.deleted ?
+                      "0 4px 12px rgba(255, 77, 79, 0.1)" :
+                      "0 4px 12px rgba(138, 43, 226, 0.15)";
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.05)";
+                    e.currentTarget.style.transform = "translateY(0)";
+                  }}
+                >
+                  <List.Item.Meta
+                    avatar={
+                      <div style={{ position: 'relative' }}>
+                        <Avatar
+                          src={friend.avatar}
+                          size={48}
+                          style={{
+                            border: friend.deleted ? 
+                              "2px solid #ff4d4f" : 
+                              "2px solid #8A2BE2",
+                            backgroundColor: "white",
+                          }}
+                        />
+                        {friend.deleted && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              bottom: -2,
+                              right: -2,
+                              width: '14px',
+                              height: '14px',
+                              backgroundColor: '#ff4d4f',
+                              borderRadius: '50%',
+                              border: '2px solid white',
+                            }}
+                          />
+                        )}
+                      </div>
+                    }
+                    title={
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <Text strong style={{ fontSize: "16px" }}>
+                          {friend.name}
+                        </Text>
+                        {friend.deleted && (
+                          <Tag
+                            color="error"
+                            style={{
+                              marginLeft: "8px",
+                              fontSize: "12px",
+                              padding: "0 6px",
+                              borderRadius: "4px",
+                            }}
+                          >
+                            已注销
+                          </Tag>
+                        )}
+                      </div>
+                    }
+                    description={
+                      <div style={{ display: 'flex', alignItems: 'center', color: '#888' }}>
+                        <MailOutlined style={{ marginRight: '6px', fontSize: '12px' }} />
+                        <Text type="secondary" style={{ fontSize: "13px" }}>
+                          {friend.email}
+                        </Text>
+                      </div>
+                    }
+                  />
+                  <Button
+                    type="text"
+                    icon={<MessageOutlined style={{ color: friend.deleted ? '#999' : '#8A2BE2' }} />}
+                    style={{ marginLeft: '8px' }}
+                    disabled={friend.deleted}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!friend.deleted) {
+                        messageApi.info("消息功能开发中...");
+                      }
                     }}
                   />
-                }
-                title={
-                  <span style={{ fontWeight: "bold", fontSize: "16px" }}>
-                    {friend.name}{" "}
-                    {friend.deleted && (
-                      <span style={{ color: "#f5222d", fontSize: "12px", marginLeft: "8px" }}>
-                        （已注销）
-                      </span>
-                    )}
-                  </span>
-                }
-                description={<span style={{ color: "#888", fontSize: "14px" }}>{friend.email}</span>}
-              />
-            </List.Item>
+                </List.Item>
+              )}
+            />
+          ) : (
+            <Empty 
+              description={
+                <span style={{ color: '#666' }}>
+                  {searchKeyword ? "没有找到匹配的好友" : "暂无好友"}
+                </span>
+              } 
+              style={{ margin: '40px 0' }}
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+            />
           )}
-        />
+        </div>
       </Drawer>
 
-      {/* 删除确认 Modal */}
       <Modal
-        title={<span style={{ color: "#faad14", fontWeight: "bold" }}>确认删除好友</span>}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', color: "#ff4d4f" }}>
+            <ExclamationCircleOutlined style={{ marginRight: 8 }} />
+            <span>确认删除好友</span>
+          </div>
+        }
         open={isDeleteModalVisible}
         onCancel={handleCancelDelete}
         footer={[
-          <Button key="cancel" onClick={handleCancelDelete}>
+          <Button key="cancel" onClick={handleCancelDelete} style={{ borderRadius: '6px' }}>
             取消
           </Button>,
           <Button
@@ -500,122 +596,335 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ visible, onClose,
             type="primary"
             danger
             onClick={() => friendToDelete && handleDeleteFriend(friendToDelete.id)}
+            style={{ borderRadius: '6px' }}
           >
             确认删除
           </Button>,
         ]}
         styles={{
-          body: modalStyles.body,
+          mask: { backdropFilter: 'blur(2px)', background: 'rgba(0,0,0,0.4)' },
+          body: { padding: '24px' },
+          header: { borderBottom: '1px solid #ffccc7' },
+          footer: { borderTop: '1px solid #ffccc7' },
         }}
+        maskClosable={false}
       >
-        <p>删除后将无法恢复，确定要删除该好友吗？</p>
+        <div style={{ 
+          padding: '16px',
+          background: 'rgba(255, 77, 79, 0.05)', 
+          borderRadius: '8px',
+          border: '1px solid rgba(255, 77, 79, 0.2)',
+          marginBottom: '16px'
+        }}>
+          <div style={{ marginBottom: '12px', fontWeight: 'bold', color: '#ff4d4f' }}>
+            您确定要删除好友 {friendToDelete?.name} 吗？
+          </div>
+          <Text type="secondary">
+            删除后将无法查看该好友的信息，且需要重新发送好友申请才能恢复好友关系。
+          </Text>
+        </div>
       </Modal>
 
-      {/* 好友申请 Modal */}
       <Modal
         title={
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ color: "#4caf50", fontWeight: "bold" }}>好友请求</span>
+          <div style={{ display: 'flex', alignItems: 'center', color: "#8A2BE2" }}>
+            <UserAddOutlined style={{ marginRight: 8 }} />
+            <span>好友请求</span>
             <Button 
               type="text"
-              icon={<RedoOutlined style={{ fontSize: "18px", color: "#4caf50" }} />}
+              icon={<RedoOutlined style={{ color: '#8A2BE2' }} />}
               onClick={() => fetchFriendRequests()}
-              style={{ marginLeft: "8px" }}
+              style={{ marginLeft: '8px' }}
             />
           </div>
         }
         open={isRequestsModalVisible}
         onCancel={() => setIsRequestsModalVisible(false)}
-        footer={[]}
+        footer={[
+          <Button 
+            key="close" 
+            onClick={() => setIsRequestsModalVisible(false)}
+            style={{ borderRadius: '6px' }}
+          >
+            关闭
+          </Button>
+        ]}
         styles={{
-          body: modalStyles.body,
+          mask: { backdropFilter: 'blur(2px)', background: 'rgba(0,0,0,0.4)' },
+          body: { padding: '20px' },
+          header: { borderBottom: '1px solid rgba(138, 43, 226, 0.1)' },
+          footer: { borderTop: '1px solid rgba(138, 43, 226, 0.1)' },
         }}
+        width={500}
       >
-        <List
-          dataSource={friendRequests}
-          renderItem={(request) => (
-            <List.Item
-              style={{
-                borderRadius: "8px",
-                marginBottom: "8px",
-                background: "#fff",
-                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-              }}
-              actions={[
-                <Button
-                  type="link"
-                  style={{ color: request.status === 0 ? "#0000ff" : "#4caf50" }}
-                  onClick={() => handleViewDetails(request)}
+        {friendRequests.length > 0 ? (
+          <List
+            dataSource={friendRequests}
+            renderItem={(request) => {
+              const status = getStatusBadge(request.status);
+              return (
+                <List.Item
+                  style={{
+                    borderRadius: "8px",
+                    marginBottom: "12px",
+                    background: "white",
+                    boxShadow: "0 2px 6px rgba(0, 0, 0, 0.05)",
+                    padding: "12px",
+                    border: `1px solid ${status.color}20`,
+                  }}
+                  actions={[
+                    <Button
+                      type="link"
+                      style={{ color: status.color }}
+                      onClick={() => handleViewDetails(request)}
+                    >
+                      {request.status === 0 ? "处理" : "查看"}
+                    </Button>,
+                  ]}
                 >
-                  {request.status === 0 ? "待处理" : "查看详情"}
-                </Button>,
-              ]}
-            >
-              <List.Item.Meta
-                avatar={<Avatar src={request.avatar} />}
-                title={request.user_name}
-                description={request.message || "无附加消息"}
-              />
-            </List.Item>
-          )}
-        />
+                  <List.Item.Meta
+                    avatar={
+                      <Avatar 
+                        src={request.avatar} 
+                        size={46}
+                        style={{ 
+                          border: `2px solid ${status.color}40`,
+                          backgroundColor: 'white',
+                        }}
+                      />
+                    }
+                    title={
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <Text strong>{request.user_name}</Text>
+                        <Tag
+                          icon={status.icon}
+                          color={status.color}
+                          style={{
+                            marginLeft: '8px',
+                            padding: '0 8px',
+                            fontSize: '12px',
+                            borderRadius: '10px',
+                          }}
+                        >
+                          {status.text}
+                        </Tag>
+                      </div>
+                    }
+                    description={
+                      <div style={{ color: '#666', fontSize: '13px' }}>
+                        {request.message ? (
+                          <div style={{ 
+                            marginTop: '4px',
+                            padding: '4px 8px',
+                            background: '#f9f9f9',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            borderLeft: `2px solid ${status.color}40` 
+                          }}>
+                            {request.message}
+                          </div>
+                        ) : (
+                          <span style={{ color: '#999', fontStyle: 'italic', fontSize: '12px' }}>无附加消息</span>
+                        )}
+                      </div>
+                    }
+                  />
+                </List.Item>
+              );
+            }}
+          />
+        ) : (
+          <Empty 
+            description="暂无好友请求" 
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            style={{ margin: '40px 0' }}
+          />
+        )}
       </Modal>
 
-      {/* 好友详情 Modal */}
       <Modal
-        title={<span style={{ color: "#4caf50", fontWeight: "bold" }}>好友详情</span>}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', color: "#8A2BE2" }}>
+            <UserOutlined style={{ marginRight: 8 }} />
+            <span>好友详情</span>
+          </div>
+        }
         open={isFriendModalVisible}
         onCancel={() => setIsFriendModalVisible(false)}
         footer={[
           <Button
             key="conversation"
             type="primary"
-            onClick={() => alert("该功能仍在施工中")}
+            icon={<MessageOutlined />}
+            onClick={() => messageApi.info("该功能仍在开发中...")}
+            style={{ 
+              borderRadius: '6px', 
+              backgroundColor: '#8A2BE2', 
+              borderColor: '#8A2BE2',
+              boxShadow: '0 2px 6px rgba(138, 43, 226, 0.2)',
+            }}
           >
-            发送消息(暂不可用)
+            发送消息
           </Button>,
           <Button
             key="delete"
             type="primary"
             danger
-            onClick={() => selectedFriend && showDeleteModal(selectedFriend)} // 调用删除确认窗口
+            icon={<DeleteOutlined />}
+            onClick={() => selectedFriend && showDeleteModal(selectedFriend)}
+            style={{ borderRadius: '6px' }}
           >
             删除好友
           </Button>,
         ]}
         styles={{
-          body: modalStyles.body,
+          mask: { backdropFilter: 'blur(2px)', background: 'rgba(0,0,0,0.4)' },
+          body: { padding: '24px' },
+          header: { borderBottom: '1px solid rgba(138, 43, 226, 0.1)' },
+          footer: { borderTop: '1px solid rgba(138, 43, 226, 0.1)' },
         }}
+        width={460}
       >
         {friendDetails ? (
-          <div>
-            <Avatar
-              src={friendDetails.avatar}
-              size={64}
-              style={{
-                border: "2px solid #4caf50",
-                padding: "2px",
-                borderRadius: "50%",
-                marginBottom: "16px",
-              }}
-            />
-            <Title level={4}>{friendDetails.name}</Title>
-            <p>邮箱: {friendDetails.email}</p>
-            <p>用户简介: {friendDetails.user_info}</p>
-            <p>分组: {friendDetails.groups.map((group: any) => group.name).join(", ") || "无"}</p>
-            {friendDetails.deleted && <p style={{ color: "#f5222d" }}>（已注销）</p>}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            textAlign: 'center'
+          }}>
+            <div style={{ position: 'relative', marginBottom: '20px' }}>
+              <Avatar
+                src={friendDetails.avatar}
+                size={100}
+                style={{
+                  border: friendDetails.deleted ? 
+                    '4px solid rgba(255, 77, 79, 0.5)' : 
+                    '4px solid rgba(138, 43, 226, 0.5)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                }}
+              />
+              {friendDetails.deleted && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 4,
+                    right: 4,
+                    width: '20px',
+                    height: '20px',
+                    backgroundColor: '#ff4d4f',
+                    borderRadius: '50%',
+                    border: '3px solid white',
+                  }}
+                />
+              )}
+            </div>
+            
+            <Title level={3} style={{ margin: '0 0 4px 0', color: friendDetails.deleted ? '#ff4d4f' : '#8A2BE2' }}>
+              {friendDetails.name}
+            </Title>
+            
+            {friendDetails.deleted && (
+              <Tag color="error" style={{ marginBottom: '16px' }}>已注销</Tag>
+            )}
+            
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              marginBottom: '20px' 
+            }}>
+              <MailOutlined style={{ color: '#8A2BE2', marginRight: '8px' }} />
+              <Text>{friendDetails.email}</Text>
+            </div>
+            
+            <Divider style={{ margin: '0 0 20px 0', width: '80%', borderColor: 'rgba(138, 43, 226, 0.1)' }} />
+            
+            <div style={{ width: '100%' }}>
+              <div style={{ 
+                textAlign: 'left', 
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'flex-start'
+              }}>
+                <InfoCircleOutlined style={{ 
+                  color: '#8A2BE2', 
+                  marginRight: '10px',
+                  marginTop: '4px'
+                }} />
+                <div style={{ flex: 1 }}>
+                  <Text strong style={{ display: 'block', marginBottom: '8px', color: '#555' }}>个人简介</Text>
+                  <div style={{ 
+                    padding: '12px',
+                    background: 'rgba(138, 43, 226, 0.05)',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(138, 43, 226, 0.1)',
+                    minHeight: '60px'
+                  }}>
+                    {friendDetails.user_info ? (
+                      <Paragraph style={{ margin: 0 }}>{friendDetails.user_info}</Paragraph>
+                    ) : (
+                      <Text type="secondary" italic>该用户暂未设置个人简介</Text>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div style={{ 
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'flex-start',
+              }}>
+                <TeamOutlined style={{ 
+                  color: '#8A2BE2', 
+                  marginRight: '10px',
+                  marginTop: '4px'
+                }} />
+                <div style={{ flex: 1 }}>
+                  <Text strong style={{ display: 'block', marginBottom: '8px', color: '#555' }}>所在分组</Text>
+                  <div style={{ 
+                    padding: '12px',
+                    background: 'rgba(138, 43, 226, 0.05)',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(138, 43, 226, 0.1)',
+                    minHeight: '40px'
+                  }}>
+                    {friendDetails.groups && friendDetails.groups.length > 0 ? (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {friendDetails.groups.map((group: any) => (
+                          <Tag
+                            key={group.id}
+                            color="#8A2BE2"
+                            style={{ 
+                              borderRadius: '12px', 
+                              padding: '2px 10px',
+                              margin: 0
+                            }}
+                          >
+                            {group.name}
+                          </Tag>
+                        ))}
+                      </div>
+                    ) : (
+                      <Text type="secondary" italic>暂无分组</Text>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
-          <p>加载中...</p>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+            <Spin size="large" />
+          </div>
         )}
       </Modal>
 
       <FriendRequestDetails
         visible={isDetailsModalVisible}
         onClose={() => setIsDetailsModalVisible(false)}
-        request={selectedRequest || undefined}
-        onAccept={(senderId, receiverId) => handleAcceptRequest(senderId, receiverId)}
-        onReject={(senderId, receiverId) => handleRejectRequest(senderId, receiverId)}
+        request={selectedRequest}
+        onAccept={handleAcceptRequest}
+        onReject={handleRejectRequest}
       />
 
       <SearchUserDrawer

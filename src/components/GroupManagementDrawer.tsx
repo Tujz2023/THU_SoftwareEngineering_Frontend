@@ -1,10 +1,11 @@
 import React, { useState, useEffect, Dispatch, SetStateAction } from "react";
-import { Drawer, List, Input, Button, Typography, message, Avatar, Modal, Dropdown, Menu, Divider, MenuProps } from "antd";
-import { PlusOutlined, UserAddOutlined, RedoOutlined } from "@ant-design/icons";
+import { Drawer, List, Input, Button, Typography, message, Avatar, Modal, Dropdown, Divider, MenuProps, Tooltip, Tag, Spin, Empty } from "antd";
+import { PlusOutlined, UserAddOutlined, RedoOutlined, EditOutlined, DeleteOutlined, TeamOutlined, InfoCircleOutlined, SearchOutlined, MoreOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import Cookies from "js-cookie";
 import { useRouter } from "next/router";
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
+const { Search } = Input;
 
 interface Group {
   id: string;
@@ -34,20 +35,12 @@ interface GroupManagementDrawerProps {
   setWebsocket: Dispatch<SetStateAction<boolean>>;
 }
 
-const drawerStyles = {
-  body: {
-    background: "linear-gradient(135deg, #f0f8ff, #e6f7ff)", // 调整背景颜色
-    borderRadius: "16px 0 0 16px",
-    padding: "16px",
-  },
-  header: {
-    background: "#4caf50",
-    color: "#fff",
-    borderRadius: "16px 0 0 0",
-  },
-};
-
-const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, onClose, websocket, setWebsocket }) => {
+const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ 
+  visible, 
+  onClose, 
+  websocket, 
+  setWebsocket 
+}) => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | undefined>(undefined);
   const [members, setMembers] = useState<Member[]>([]);
@@ -55,20 +48,24 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
   const [isFriendListVisible, setIsFriendListVisible] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [membersLoading, setMembersLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState<string | undefined>(undefined);
   const [isDeleteMemberModalVisible, setIsDeleteMemberModalVisible] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<string | undefined>(undefined);
+  const [memberToDeleteName, setMemberToDeleteName] = useState<string>("");
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | undefined>(undefined);
   const [editingGroupName, setEditingGroupName] = useState("");
   const [searchKeyword, setSearchKeyword] = useState(""); 
+  const [groupNameSearchKeyword, setGroupNameSearchKeyword] = useState(""); 
   const router = useRouter();
 
   // 获取分组列表
   const fetchGroups = async () => {
     const token = Cookies.get("jwtToken");
+    setLoading(true);
 
     try {
       const response = await fetch("/api/groups", {
@@ -96,13 +93,15 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
       }
     } catch (error) {
       messageApi.error("网络错误，请稍后重试");
+    } finally {
+      setLoading(false);
     }
   };
 
   // 修改分组名称
   const updateGroupName = async () => {
     const newName = editingGroupName.trim();
-    if (! (editingGroup && newName)){
+    if (!(editingGroup && newName)){
       messageApi.error("分组名称不能为空");
       return;
     }
@@ -209,21 +208,10 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
     setIsEditModalVisible(true);
   };
 
-  // 确认修改分组名称
-  // const handleEditGroupName = async () => {
-  //   if (editingGroup && editingGroupName.trim()) {
-  //     await updateGroupName(editingGroup.id, editingGroupName.trim());
-  //     setIsEditModalVisible(false);
-  //     setEditingGroup(undefined);
-  //     setEditingGroupName("");
-  //   } else {
-  //     messageApi.error("分组名称不能为空");
-  //   }
-  // };
-
   // 获取分组详情
   const fetchGroupDetails = async (groupId: string) => {
     const token = Cookies.get("jwtToken");
+    setMembersLoading(true);
 
     try {
       const response = await fetch(`/api/groups/manage_groups?group_id=${groupId}`, {
@@ -252,6 +240,8 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
       }
     } catch (error) {
       messageApi.error("网络错误，请稍后重试");
+    } finally {
+      setMembersLoading(false);
     }
   };
 
@@ -343,17 +333,20 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
       setLoading(false);
       setIsDeleteMemberModalVisible(false); // 关闭删除确认弹窗
       setMemberToDelete(undefined); // 清空待删除的成员 ID
+      setMemberToDeleteName("");
     }
   };
 
-  const showDeleteMemberModal = (memberId: string) => {
+  const showDeleteMemberModal = (memberId: string, memberName: string) => {
     setMemberToDelete(memberId);
+    setMemberToDeleteName(memberName);
     setIsDeleteMemberModalVisible(true);
   };
 
   // 获取分组成员列表
   const fetchGroupMembers = async (groupId: string) => {
     const token = Cookies.get("jwtToken");
+    setMembersLoading(true);
 
     try {
       const response = await fetch(`/api/groups/members?group_id=${groupId}`, {
@@ -382,6 +375,8 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
       }
     } catch (error) {
       messageApi.error("网络错误，请稍后重试");
+    } finally {
+      setMembersLoading(false);
     }
   };
 
@@ -457,6 +452,15 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
       if (res.code === 0) {
         messageApi.success(res.message || "添加好友到分组成功");
         fetchGroupMembers(selectedGroupId); // 刷新分组成员列表
+        
+        // 更新好友列表中的状态（已在组内）
+        const updatedFriends = friends.map(friend => {
+          if (friend.id === friendId) {
+            return { ...friend, inGroup: true };
+          }
+          return friend;
+        });
+        setFriends(updatedFriends);
       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
@@ -481,7 +485,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
       messageApi.error("请先选择一个分组");
       return;
     }
-    fetchGroupDetails(selectedGroupId);
+    fetchGroupMembers(selectedGroupId);
   }
 
   useEffect(() => {
@@ -493,25 +497,35 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
   useEffect(() => {
     if (websocket === true) {
       if (selectedGroupId !== undefined) {
-        fetchGroupDetails(selectedGroupId);
+        fetchGroupMembers(selectedGroupId);
       }
       if (isFriendListVisible === true) {
         fetchFriendList();
       }
       setWebsocket(false);
     }
-  }, [websocket])
+  }, [websocket]);
 
   // 修改后的菜单
   const menu = (group: Group): MenuProps['items'] => [
     {
       key: 'edit',
-      label: '修改名称',
+      label: (
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <EditOutlined style={{ marginRight: '8px', color: '#8A2BE2' }} />
+          <span>修改名称</span>
+        </div>
+      ),
       onClick: () => showEditModal(group),
     },
     {
       key: 'delete',
-      label: '删除分组',
+      label: (
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <DeleteOutlined style={{ marginRight: '8px', color: '#ff4d4f' }} />
+          <span>删除分组</span>
+        </div>
+      ),
       danger: true,
       onClick: () => showDeleteModal(group.id),
     }
@@ -523,53 +537,136 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
     friend.email.toLowerCase().includes(searchKeyword.toLowerCase())
   );
 
+  // 过滤分组列表
+  const filteredGroups = groups.filter((group) =>
+    group.name.toLowerCase().includes(groupNameSearchKeyword.toLowerCase())
+  );
+
+  // 找到当前选中的分组名称
+  const selectedGroupName = groups.find(g => g.id === selectedGroupId)?.name || "未选择分组";
+
   return (
     <>
+      {contextHolder}
+      
       {/* 修改分组名称弹窗 */}
       <Modal
-        title="修改分组名称"
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', color: "#8A2BE2" }}>
+            <EditOutlined style={{ marginRight: 8 }} />
+            <span>修改分组名称</span>
+          </div>
+        }
         open={isEditModalVisible}
         onOk={updateGroupName}
         onCancel={() => setIsEditModalVisible(false)}
         okText="确认"
         cancelText="取消"
+        okButtonProps={{ 
+          style: { backgroundColor: "#8A2BE2", borderColor: "#8A2BE2" } 
+        }}
+        styles={{
+          mask: { backdropFilter: 'blur(2px)', background: 'rgba(0,0,0,0.4)' },
+          header: { borderBottom: '1px solid rgba(138, 43, 226, 0.1)' },
+          footer: { borderTop: '1px solid rgba(138, 43, 226, 0.1)' },
+        }}
       >
         <Input
           placeholder="请输入新的分组名称"
           value={editingGroupName}
           onChange={(e) => setEditingGroupName(e.target.value)}
           maxLength={50}
+          prefix={<TeamOutlined style={{ color: 'rgba(0,0,0,0.25)' }} />}
+          style={{ 
+            borderRadius: '8px',
+            marginTop: '16px',
+            boxShadow: 'none',
+            borderColor: 'rgba(138, 43, 226, 0.2)'
+          }}
         />
       </Modal>
 
       {/* 删除分组确认弹窗 */}
       <Modal
-        title={<span style={{ color: "#f5222d", fontWeight: "bold" }}>确认删除分组</span>}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', color: "#ff4d4f" }}>
+            <ExclamationCircleOutlined style={{ marginRight: 8 }} />
+            <span>确认删除分组</span>
+          </div>
+        }
         open={isDeleteModalVisible}
         onOk={deleteGroup}
         onCancel={() => setIsDeleteModalVisible(false)}
-        okText="确认"
+        okText="确认删除"
         cancelText="取消"
         okButtonProps={{ danger: true }}
+        styles={{
+          mask: { backdropFilter: 'blur(2px)', background: 'rgba(0,0,0,0.4)' },
+          header: { borderBottom: '1px solid rgba(255, 77, 79, 0.1)' },
+          footer: { borderTop: '1px solid rgba(255, 77, 79, 0.1)' },
+        }}
       >
-        <p style={{ color: "#888" }}>删除分组将无法恢复，是否继续？</p>
+        <div style={{ 
+          padding: '16px',
+          background: 'rgba(255, 77, 79, 0.05)', 
+          borderRadius: '8px',
+          border: '1px solid rgba(255, 77, 79, 0.2)',
+          marginBottom: '16px'
+        }}>
+          <Text style={{ display: 'block', marginBottom: '8px' }}>
+            <InfoCircleOutlined style={{ color: '#ff4d4f', marginRight: '8px' }} />
+            删除分组将会导致以下后果：
+          </Text>
+          <ul style={{ paddingLeft: '24px', margin: '8px 0' }}>
+            <li>该分组下的所有成员将被移除</li>
+            <li>删除后无法恢复</li>
+          </ul>
+        </div>
+        <Paragraph type="secondary">
+          您确定要删除该分组吗？
+        </Paragraph>
       </Modal>
 
       {/* 删除分组成员确认弹窗 */}
       <Modal
-        title={<span style={{ color: "#f5222d", fontWeight: "bold" }}>确认删除成员</span>}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', color: "#ff4d4f" }}>
+            <ExclamationCircleOutlined style={{ marginRight: 8 }} />
+            <span>移除分组成员</span>
+          </div>
+        }
         open={isDeleteMemberModalVisible}
         onOk={deleteGroupMember}
         onCancel={() => setIsDeleteMemberModalVisible(false)}
-        okText="确认"
+        okText="确认移除"
         cancelText="取消"
         okButtonProps={{ danger: true }}
+        styles={{
+          mask: { backdropFilter: 'blur(2px)', background: 'rgba(0,0,0,0.4)' },
+          header: { borderBottom: '1px solid rgba(255, 77, 79, 0.1)' },
+          footer: { borderTop: '1px solid rgba(255, 77, 79, 0.1)' },
+        }}
       >
-        <p style={{ color: "#888" }}>删除成员将无法恢复，是否继续？</p>
+        <div style={{ 
+          padding: '16px',
+          background: 'rgba(255, 77, 79, 0.05)', 
+          borderRadius: '8px',
+          border: '1px solid rgba(255, 77, 79, 0.2)',
+        }}>
+          <Text>
+            您确定要将 <Text strong>{memberToDeleteName}</Text> 从分组 <Text strong>{selectedGroupName}</Text> 中移除吗？
+          </Text>
+        </div>
       </Modal>
 
+      {/* 主抽屉 */}
       <Drawer
-        title={<span style={{ color: "#fff", fontWeight: "bold" }}>分组管理</span>}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <TeamOutlined style={{ marginRight: 8, color: 'white' }} />
+            <span style={{ color: "#fff", fontWeight: "bold" }}>分组管理</span>
+          </div>
+        }
         placement="left"
         onClose={() => {
           setSelectedGroupId(undefined);
@@ -578,211 +675,596 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({ visible, 
         open={visible}
         width="60vw"
         styles={{
-          body: drawerStyles.body, // 使用 styles 替代 bodyStyle
-          header: drawerStyles.header, // 使用 styles 替代 headerStyle
+          body: {
+            background: "linear-gradient(135deg, #f9f9ff, #f0f0ff)",
+            borderRadius: "0 0 0 16px",
+            padding: "16px",
+          },
+          header: {
+            background: "linear-gradient(90deg, #8A2BE2, #7B1FA2)",
+            color: "#fff",
+            borderRadius: "16px 0 0 0",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+          },
+          mask: {
+            backdropFilter: "blur(2px)",
+            background: "rgba(0,0,0,0.4)",
+          },
+          wrapper: {
+            boxShadow: "0 0 20px rgba(0,0,0,0.15)",
+          }
         }}
+        maskClosable={true}
+        closeIcon={<div style={{ color: "white", fontSize: "16px" }}>✕</div>}
       >
-        {contextHolder}
         <div style={{ display: "flex", gap: "16px", height: "100%" }}>
           {/* 左侧分组列表 */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#fff", borderRadius: "8px", padding: "16px", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)" }}>
+          <div style={{ 
+            flex: 1, 
+            display: "flex", 
+            flexDirection: "column", 
+            background: "#fff", 
+            borderRadius: "12px", 
+            padding: "16px", 
+            boxShadow: "0 4px 12px rgba(138, 43, 226, 0.1)" 
+          }}>
             <div style={{ marginBottom: "16px" }}>
+              <Text strong style={{ display: 'block', marginBottom: '8px', color: '#8A2BE2' }}>
+                创建新分组
+              </Text>
               <Input
                 placeholder="输入分组名称"
                 value={newGroupName}
                 onChange={(e) => setNewGroupName(e.target.value)}
-                style={{ marginBottom: "8px", borderRadius: "8px" }}
+                maxLength={20}
+                style={{ 
+                  marginBottom: "12px", 
+                  borderRadius: "8px",
+                  borderColor: "rgba(138, 43, 226, 0.2)" 
+                }}
+                prefix={<TeamOutlined style={{ color: 'rgba(138, 43, 226, 0.5)' }} />}
+                suffix={
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    {newGroupName.length}/20
+                  </Text>
+                }
               />
-              <Button type="primary" onClick={createGroup} loading={loading} block style={{ borderRadius: "8px", backgroundColor: "#4caf50", borderColor: "#4caf50" }}>
+              <Button 
+                type="primary" 
+                onClick={createGroup} 
+                loading={loading} 
+                icon={<PlusOutlined />}
+                block 
+                style={{ 
+                  borderRadius: "8px", 
+                  backgroundColor: "#8A2BE2", 
+                  borderColor: "#8A2BE2",
+                  height: '40px',
+                  boxShadow: "0 2px 6px rgba(138, 43, 226, 0.2)"
+                }}
+              >
                 创建分组
               </Button>
             </div>
-            <Divider>分组列表</Divider>
-            <List
-              dataSource={groups}
-              renderItem={(group) => (
-                <Dropdown menu={{ items: menu(group) }} trigger={["contextMenu"]}>
-                  <List.Item
-                    style={{
-                      cursor: "pointer",
-                      background: selectedGroupId === group.id ? "#e6f7ff" : "#fff",
-                      borderRadius: "8px",
-                      marginBottom: "8px",
-                      padding: "12px",
-                      boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                      transition: "background 0.3s",
-                    }}
-                    onClick={() => {
-                      setSelectedGroupId(group.id);
-                      fetchGroupDetails(group.id);
-                    }}
-                  >
-                    {group.name}
-                  </List.Item>
-                </Dropdown>
-              )}
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <Text strong style={{ color: '#8A2BE2' }}>
+                分组列表 ({groups.length})
+              </Text>
+              <RedoOutlined 
+                onClick={fetchGroups}
+                style={{
+                  fontSize: "16px",
+                  color: "#8A2BE2",
+                  cursor: "pointer",
+                  transition: "all 0.3s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "rotate(90deg)";
+                  e.currentTarget.style.color = "#7B1FA2";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "rotate(0deg)";
+                  e.currentTarget.style.color = "#8A2BE2";
+                }}
+              />
+            </div>
+            
+            <Search
+              placeholder="搜索分组"
+              allowClear
+              value={groupNameSearchKeyword}
+              onChange={(e) => setGroupNameSearchKeyword(e.target.value)}
+              style={{ marginBottom: '16px', borderRadius: '8px' }}
+              prefix={<SearchOutlined style={{ color: 'rgba(138, 43, 226, 0.5)' }} />}
             />
+            
+            <Divider style={{ margin: '0 0 16px', borderColor: 'rgba(138, 43, 226, 0.1)' }} />
+            
+            {loading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+                <Spin size="default" />
+              </div>
+            ) : filteredGroups.length > 0 ? (
+              <div 
+                style={{ 
+                  overflowY: 'auto', 
+                  flexGrow: 1,
+                  padding: '4px'
+                }}
+              >
+                <List
+                  dataSource={filteredGroups}
+                  renderItem={(group) => (
+                    <Dropdown menu={{ items: menu(group) }} trigger={["contextMenu"]}>
+                      <List.Item
+                        style={{
+                          cursor: "pointer",
+                          background: selectedGroupId === group.id 
+                            ? "linear-gradient(90deg, rgba(138, 43, 226, 0.05), rgba(138, 43, 226, 0.15))" 
+                            : "#fff",
+                          borderRadius: "8px",
+                          marginBottom: "8px",
+                          padding: "12px 16px",
+                          border: selectedGroupId === group.id
+                            ? "1px solid rgba(138, 43, 226, 0.2)"
+                            : "1px solid rgba(138, 43, 226, 0.05)",
+                          boxShadow: selectedGroupId === group.id
+                            ? "0 2px 8px rgba(138, 43, 226, 0.1)"
+                            : "0 1px 3px rgba(0, 0, 0, 0.05)",
+                          transition: "all 0.3s",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center"
+                        }}
+                        onClick={() => {
+                          setSelectedGroupId(group.id);
+                          fetchGroupDetails(group.id);
+                        }}
+                        onMouseEnter={(e) => {
+                          if (selectedGroupId !== group.id) {
+                            e.currentTarget.style.background = "rgba(138, 43, 226, 0.05)";
+                            e.currentTarget.style.boxShadow = "0 2px 8px rgba(138, 43, 226, 0.07)";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (selectedGroupId !== group.id) {
+                            e.currentTarget.style.background = "#fff";
+                            e.currentTarget.style.boxShadow = "0 1px 3px rgba(0, 0, 0, 0.05)";
+                          }
+                        }}
+                      >
+                        <div style={{ 
+                          flex: 1, 
+                          fontWeight: selectedGroupId === group.id ? 500 : 400,
+                          color: selectedGroupId === group.id ? "#8A2BE2" : "#333"
+                        }}>
+                          {group.name}
+                        </div>
+                        <Dropdown menu={{ items: menu(group) }}>
+                          <Button 
+                            type="text" 
+                            icon={<MoreOutlined />} 
+                            size="small"
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ 
+                              color: "#8A2BE2",
+                              borderRadius: "50%",
+                              width: "28px",
+                              height: "28px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center"
+                            }}
+                          />
+                        </Dropdown>
+                      </List.Item>
+                    </Dropdown>
+                  )}
+                />
+              </div>
+            ) : (
+              <Empty 
+                description={
+                  groupNameSearchKeyword ? "没有找到匹配的分组" : "暂无分组"
+                }
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                style={{ margin: '40px 0' }}
+              />
+            )}
           </div>
 
           {/* 分组成员部分 */}
-          <div style={{ flex: 2, background: "#fff", borderRadius: "8px", padding: "16px", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
-                <Divider
-                  orientation="center"
-                  style={{
-                    margin: 0,
-                    fontWeight: "bold",
-                    fontSize: "18px", // 更大的字体
-                    color: "#4caf50", // 柔和的绿色
-                    width: "100px", // 控制分界线的长度
-                  }}
-                >
-                  分组成员
-                </Divider>
+          <div style={{ 
+            flex: 2, 
+            background: "#fff", 
+            borderRadius: "12px", 
+            padding: "16px", 
+            boxShadow: "0 4px 12px rgba(138, 43, 226, 0.1)",
+            display: "flex",
+            flexDirection: "column"
+          }}>
+            <div style={{ 
+              display: "flex", 
+              justifyContent: "space-between", 
+              alignItems: "center", 
+              marginBottom: "16px",
+              padding: "0 0 12px",
+              borderBottom: "1px solid rgba(138, 43, 226, 0.1)"
+            }}>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <TeamOutlined style={{ color: "#8A2BE2", fontSize: "20px", marginRight: "8px" }} />
+                <Title level={4} style={{ margin: 0, color: "#8A2BE2" }}>
+                  {selectedGroupId ? selectedGroupName : "分组成员"}
+                </Title>
+                
+                {selectedGroupId && (
+                  <Tag 
+                    color="#8A2BE2" 
+                    style={{ marginLeft: '12px' }}
+                  >
+                    {members.length} 位成员
+                  </Tag>
+                )}
               </div>
-              <RedoOutlined
-                onClick={handleRefresh}
-                style={{
-                  fontSize: "20px",
-                  color: "#4caf50",
-                  cursor: "pointer",
-                  transition: "color 0.3s",
-                  margin: "0 5px", // 添加左右外边距
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#66bb6a")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#4caf50")}
-              />
-              <UserAddOutlined
-                onClick={fetchFriendList}
-                style={{
-                  fontSize: "20px",
-                  color: "#4caf50",
-                  cursor: "pointer",
-                  transition: "color 0.3s",
-                  margin: "0 5px", // 添加左右外边距
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#66bb6a")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#4caf50")}
-              />
+              
+              <div>
+                {selectedGroupId && (
+                  <>
+                    <Tooltip title="刷新成员列表">
+                      <Button
+                        type="text"
+                        icon={
+                          <RedoOutlined
+                            style={{
+                              fontSize: "18px",
+                              color: "#8A2BE2",
+                            }}
+                          />
+                        }
+                        onClick={handleRefresh}
+                        style={{
+                          borderRadius: "50%",
+                          marginRight: "8px",
+                          width: "36px",
+                          height: "36px",
+                        }}
+                      />
+                    </Tooltip>
+                    
+                    <Tooltip title="添加成员">
+                      <Button
+                        type="primary"
+                        icon={<UserAddOutlined />}
+                        onClick={fetchFriendList}
+                        style={{
+                          borderRadius: "8px",
+                          backgroundColor: "#8A2BE2",
+                          borderColor: "#8A2BE2",
+                          boxShadow: "0 2px 6px rgba(138, 43, 226, 0.2)"
+                        }}
+                      >
+                        添加成员
+                      </Button>
+                    </Tooltip>
+                  </>
+                )}
+              </div>
             </div>
+            
             {selectedGroupId ? (
-              <List
-                dataSource={members}
-                renderItem={(member) => (
-                  <List.Item
+              membersLoading ? (
+                <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <Spin size="large" />
+                </div>
+              ) : members.length > 0 ? (
+                <List
+                  style={{ 
+                    overflowY: "auto",
+                    flex: 1,
+                    padding: "4px"
+                  }}
+                  dataSource={members}
+                  renderItem={(member) => (
+                    <List.Item
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "16px",
+                        borderBottom: "1px solid rgba(138, 43, 226, 0.05)",
+                        transition: "background 0.3s",
+                        borderRadius: "8px",
+                        marginBottom: "8px",
+                        background: "rgba(250, 250, 255, 0.5)",
+                        border: "1px solid rgba(138, 43, 226, 0.05)",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "rgba(240, 240, 255, 0.7)";
+                        e.currentTarget.style.boxShadow = "0 2px 8px rgba(138, 43, 226, 0.05)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "rgba(250, 250, 255, 0.5)";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+                      <div style={{ position: 'relative' }}>
+                        <Avatar
+                          src={member.avatar}
+                          size={46}
+                          style={{
+                            marginRight: "16px",
+                            border: member.deleted 
+                              ? "2px solid #ff4d4f" 
+                              : "2px solid #8A2BE2",
+                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)"
+                          }}
+                        />
+                        {member.deleted && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              bottom: 0,
+                              right: 12,
+                              width: '12px',
+                              height: '12px',
+                              backgroundColor: '#ff4d4f',
+                              borderRadius: '50%',
+                              border: '2px solid white',
+                            }}
+                          />
+                        )}
+                      </div>
+                      
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <Text strong style={{ fontSize: '16px' }}>{member.name}</Text>
+                          {member.deleted && (
+                            <Tag 
+                              color="error" 
+                              style={{ marginLeft: '8px', fontSize: '12px' }}
+                            >
+                              已注销
+                            </Tag>
+                          )}
+                        </div>
+                        <Text type="secondary" style={{ display: 'block', marginTop: '4px', fontSize: '13px' }}>
+                          {member.email}
+                        </Text>
+                      </div>
+                      
+                      <Button
+                        danger
+                        icon={<DeleteOutlined />}
+                        style={{ 
+                          borderRadius: "8px",
+                          boxShadow: "0 2px 4px rgba(255, 77, 79, 0.1)"
+                        }}
+                        onClick={() => showDeleteMemberModal(member.id, member.name)}
+                      >
+                        移除
+                      </Button>
+                    </List.Item>
+                  )}
+                />
+              ) : (
+                <div style={{ 
+                  flex: 1, 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  justifyContent: 'center', 
+                  alignItems: 'center' 
+                }}>
+                  <Empty 
+                    description="该分组暂无成员" 
+                    image={Empty.PRESENTED_IMAGE_SIMPLE} 
+                  />
+                  <Button
+                    type="primary"
+                    icon={<UserAddOutlined />}
+                    onClick={fetchFriendList}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      padding: "8px",
-                      borderBottom: "1px solid #f0f0f0",
-                      transition: "background 0.3s",
+                      marginTop: '16px',
+                      borderRadius: "8px",
+                      backgroundColor: "#8A2BE2",
+                      borderColor: "#8A2BE2",
+                      boxShadow: "0 2px 6px rgba(138, 43, 226, 0.2)"
                     }}
                   >
-                    <Avatar
-                      src={member.avatar}
-                      size={40}
-                      style={{
-                        marginRight: "16px",
-                        border: member.deleted ? "2px solid #f5222d" : "2px solid #4caf50",
-                      }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <Text strong>{member.name}</Text>
-                      <br />
-                      <Text type="secondary">{member.email}</Text>
-                      {member.deleted && (
-                        <Text type="danger" style={{ marginLeft: "8px" }}>
-                          （已注销）
-                        </Text>
-                      )}
-                    </div>
-                    <Button
-                      danger
-                      size="small"
-                      style={{ borderRadius: "8px" }}
-                      onClick={() => showDeleteMemberModal(member.id)}
-                    >
-                      删除
-                    </Button>
-                  </List.Item>
-                )}
-              />
+                    添加成员
+                  </Button>
+                </div>
+              )
             ) : (
-              <p style={{ textAlign: "center", color: "#888" }}>请选择一个分组以查看成员</p>
+              <div style={{ 
+                flex: 1, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                justifyContent: 'center', 
+                alignItems: 'center',
+                color: '#8A2BE2',
+                opacity: 0.7
+              }}>
+                <TeamOutlined style={{ fontSize: '64px', marginBottom: '16px', opacity: 0.4 }} />
+                <Text style={{ fontSize: '16px', color: '#8A2BE2' }}>请先选择一个分组</Text>
+                <Text type="secondary" style={{ marginTop: '8px', textAlign: 'center', maxWidth: '300px' }}>
+                  从左侧列表选择一个分组，或创建新分组
+                </Text>
+              </div>
             )}
           </div>
         </div>
 
         {/* 好友列表弹窗 */}
         <Modal
-          title={<span style={{ color: "#1890ff", fontWeight: "bold" }}>好友列表</span>}
+          title={
+            <div style={{ display: 'flex', alignItems: 'center', color: "#8A2BE2" }}>
+              <UserAddOutlined style={{ marginRight: 8 }} />
+              <span>添加好友到分组</span>
+            </div>
+          }
           open={isFriendListVisible}
           onCancel={() => {setIsFriendListVisible(false); setSearchKeyword('');}}
-          footer={[]}
-          styles={{ body:{padding: "16px", background: "#f9f9f9"} }}
+          footer={[
+            <Button 
+              key="close" 
+              onClick={() => {setIsFriendListVisible(false); setSearchKeyword('');}}
+              style={{ borderRadius: '6px' }}
+            >
+              关闭
+            </Button>
+          ]}
+          styles={{ 
+            body: { padding: "16px" },
+            mask: { backdropFilter: 'blur(2px)', background: 'rgba(0,0,0,0.4)' },
+            header: { borderBottom: '1px solid rgba(138, 43, 226, 0.1)' },
+            footer: { borderTop: '1px solid rgba(138, 43, 226, 0.1)' },
+          }}
+          width={500}
         >
+          <div style={{ marginBottom: '16px' }}>
+            <Text type="secondary">分组: <Text strong style={{ color: '#8A2BE2' }}>{selectedGroupName}</Text></Text>
+          </div>
+          
           {/* 搜索框 */}
-          <Input.Search
+          <Search
             placeholder="搜索好友"
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
-            style={{ marginBottom: "16px", borderRadius: "8px" }}
+            style={{ 
+              marginBottom: "16px", 
+              borderRadius: "8px"
+            }}
+            prefix={<SearchOutlined style={{ color: 'rgba(138, 43, 226, 0.5)' }} />}
           />
 
           {/* 好友列表 */}
-          <List
-            dataSource={filteredFriends} // 使用过滤后的好友列表
-            renderItem={(friend) => {
-              const isInGroup = members.some((member) => member.id === friend.id);
-              return (
-                <List.Item
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "8px",
-                    borderBottom: "1px solid #f0f0f0",
-                    transition: "background 0.3s",
-                  }}
-                >
-                  <Avatar
-                    src={friend.avatar}
-                    size={40}
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+              <Spin size="large" />
+            </div>
+          ) : filteredFriends.length > 0 ? (
+            <List
+              style={{ 
+                maxHeight: '400px', 
+                overflowY: 'auto',
+                padding: '4px'
+              }}
+              dataSource={filteredFriends}
+              renderItem={(friend) => {
+                const isInGroup = members.some((member) => member.id === friend.id);
+                return (
+                  <List.Item
                     style={{
-                      marginRight: "16px",
-                      border: friend.deleted ? "2px solid #f5222d" : "2px solid #4caf50",
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "12px",
+                      borderRadius: "8px",
+                      marginBottom: "8px",
+                      background: isInGroup 
+                        ? "rgba(138, 43, 226, 0.05)" 
+                        : friend.deleted 
+                          ? "rgba(255, 77, 79, 0.05)"
+                          : "white",
+                      border: isInGroup 
+                        ? "1px solid rgba(138, 43, 226, 0.1)" 
+                        : friend.deleted 
+                          ? "1px solid rgba(255, 77, 79, 0.1)"
+                          : "1px solid rgba(0, 0, 0, 0.06)",
+                      transition: "all 0.3s",
                     }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <Text strong>{friend.name}</Text>
-                    <br />
-                    <Text type="secondary">{friend.email}</Text>
-                    {friend.deleted && (
-                      <Text type="danger" style={{ marginLeft: "8px" }}>
-                        （已注销）
-                      </Text>
-                    )}
-                  </div>
-                  {!friend.deleted && (
-                    isInGroup ? (
-                      <Text type="secondary" style={{ marginLeft: "8px" }}>
-                        已在组内
-                      </Text>
-                    ) : (
+                    onMouseEnter={(e) => {
+                      if (!isInGroup && !friend.deleted) {
+                        e.currentTarget.style.boxShadow = "0 2px 8px rgba(138, 43, 226, 0.1)";
+                        e.currentTarget.style.transform = "translateY(-1px)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isInGroup && !friend.deleted) {
+                        e.currentTarget.style.boxShadow = "none";
+                        e.currentTarget.style.transform = "translateY(0)";
+                      }
+                    }}
+                  >
+                    <div style={{ position: 'relative' }}>
+                      <Avatar
+                        src={friend.avatar}
+                        size={40}
+                        style={{
+                          marginRight: "16px",
+                          border: friend.deleted 
+                            ? "2px solid rgba(255, 77, 79, 0.5)" 
+                            : isInGroup 
+                              ? "2px solid rgba(138, 43, 226, 0.5)" 
+                              : "2px solid rgba(138, 43, 226, 0.2)",
+                        }}
+                      />
+                      {friend.deleted && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            right: 12,
+                            width: '10px',
+                            height: '10px',
+                            backgroundColor: '#ff4d4f',
+                            borderRadius: '50%',
+                            border: '2px solid white',
+                          }}
+                        />
+                      )}
+                    </div>
+                    
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <Text strong>{friend.name}</Text>
+                        {friend.deleted && (
+                          <Tag 
+                            color="error" 
+                            style={{ marginLeft: '8px', fontSize: '12px' }}
+                          >
+                            已注销
+                          </Tag>
+                        )}
+                        {isInGroup && (
+                          <Tag 
+                            color="#8A2BE2" 
+                            style={{ marginLeft: '8px', fontSize: '12px' }}
+                          >
+                            已在组内
+                          </Tag>
+                        )}
+                      </div>
+                      <Text type="secondary" style={{ fontSize: '13px' }}>{friend.email}</Text>
+                    </div>
+                    
+                    {!friend.deleted && !isInGroup && (
                       <Button
                         type="primary"
                         size="small"
-                        style={{ borderRadius: "8px", backgroundColor: "#4caf50", borderColor: "#4caf50" }}
+                        style={{ 
+                          borderRadius: "6px", 
+                          backgroundColor: "#8A2BE2", 
+                          borderColor: "#8A2BE2",
+                          boxShadow: "0 2px 4px rgba(138, 43, 226, 0.2)"
+                        }}
                         onClick={() => addFriendToGroup(friend.id)}
                       >
-                        加入分组
+                        添加
                       </Button>
-                    )
-                  )}
-                </List.Item>
-              );
-            }}
-          />
+                    )}
+                  </List.Item>
+                );
+              }}
+            />
+          ) : (
+            <Empty 
+              description={
+                searchKeyword ? "没有找到匹配的好友" : "暂无好友"
+              } 
+              style={{ margin: '40px 0' }}
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+            />
+          )}
         </Modal>
       </Drawer>
     </>

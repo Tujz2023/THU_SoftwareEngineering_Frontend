@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Drawer, Input, List, Avatar, Typography, Button, message, Modal } from "antd";
-import { RedoOutlined } from "@ant-design/icons";
+import { Drawer, Input, List, Avatar, Typography, Button, message, Modal, Empty, Spin, Tag, Divider } from "antd";
+import { SearchOutlined, RedoOutlined, UserAddOutlined, MessageOutlined, MailOutlined, InfoCircleOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import Cookies from "js-cookie";
 import { useRouter } from "next/router";
 
-const { Title } = Typography;
+const { Title, Text, Paragraph } = Typography;
+const { TextArea } = Input;
 
 interface SearchResult {
   user_id: string;
@@ -20,27 +21,15 @@ interface SearchUserDrawerProps {
   onClose: () => void;
 }
 
-const drawerStyles = {
-  body: {
-    background: "linear-gradient(135deg, #f0f8ff, #e6f7ff)", // 调整背景颜色
-    borderRadius: "16px 0 0 16px",
-    padding: "16px",
-  },
-  header: {
-    background: "#4caf50",
-    color: "#fff",
-    borderRadius: "16px 0 0 0",
-  },
-};
-
 const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose }) => {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
-  const [messageText, setMessageText] = useState(''); // 存储用户输入的消息
-  const [isModalVisible, setIsModalVisible] = useState(false); // 控制模态框的显示
-  const [targetUserId, setTargetUserId] = useState(''); // 存储目标用户ID
+  const [messageText, setMessageText] = useState(''); 
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [targetUserId, setTargetUserId] = useState('');
+  const [selectedUser, setSelectedUser] = useState<SearchResult | undefined>(undefined);
   const router = useRouter();
 
   // 从 cookies 获取自己的 email
@@ -56,7 +45,7 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/search_user?query_name=${search}`, {
+      const response = await fetch(`/api/search_user?query_name=${encodeURIComponent(search)}`, {
         method: "GET",
         headers: {
           Authorization: `${token}`,
@@ -86,23 +75,15 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
     }
   };
 
-  const handleRefresh = () => {
-    handleSearchUsers(); // 重新发送搜索请求
-  };
-
-  const handleAddFriend = (targetId: string) => {
-    setTargetUserId(targetId); // 设置目标用户ID
+  const handleAddFriend = (user: SearchResult) => {
+    setTargetUserId(user.user_id);
+    setSelectedUser(user);
     setMessageText('');
-    setIsModalVisible(true); // 显示模态框
+    setIsModalVisible(true);
   }
 
   const handleSendMessage = async () => {
     const token = Cookies.get("jwtToken");
-
-    if (messageText.trim() === '') {
-      messageApi.error('请输入消息内容');
-      return;
-    }
 
     try {
       const response = await fetch("/api/add_friend", {
@@ -113,7 +94,7 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
         },
         body: JSON.stringify({
           target_id: targetUserId,
-          message: messageText,
+          message: messageText.trim(),
         }),
       });
 
@@ -121,8 +102,17 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
 
       if (res.code === 0) {
         messageApi.success(res.message || "好友申请已发送");
-        setIsModalVisible(false); // 隐藏模态框
-        setMessageText(''); // 清空消息文本
+        setIsModalVisible(false);
+        setMessageText('');
+        
+        // 更新本地搜索结果状态
+        setSearchResults(prev => 
+          prev.map(item => 
+            item.user_id === targetUserId 
+              ? { ...item, is_friend: true } 
+              : item
+          )
+        );
       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
@@ -141,124 +131,400 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
   };
 
   const handleDrawerClose = () => {
-    setSearch(""); // 重置搜索栏
-    setSearchResults([]); // 清空搜索结果
-    onClose(); // 调用父组件的关闭方法
+    setSearch("");
+    setSearchResults([]);
+    onClose();
+  };
+
+  const getFormattedDate = () => {
+    const now = new Date();
+    return now.toLocaleDateString('zh-CN', { 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
     <>
       {contextHolder}
       <Drawer
-        title={<span style={{ color: "#fff", fontWeight: "bold" }}>添加好友</span>}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <UserAddOutlined style={{ marginRight: 8, color: 'white' }} />
+            <span style={{ color: "#fff", fontWeight: "bold" }}>添加好友</span>
+          </div>
+        }
         placement="left"
         onClose={handleDrawerClose}
         open={visible}
-        width="400px"
+        width="38vw"
         styles={{
-          body: drawerStyles.body, // 使用 styles 替代 bodyStyle
-          header: drawerStyles.header, // 使用 styles 替代 headerStyle
+          body: {
+            background: "linear-gradient(135deg, #f9f9ff, #f0f0ff)",
+            borderRadius: "0 0 0 16px",
+            padding: "16px",
+          },
+          header: {
+            background: "linear-gradient(90deg, #8A2BE2, #7B1FA2)",
+            color: "#fff",
+            borderRadius: "16px 0 0 0",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+          },
+          mask: {
+            backdropFilter: "blur(2px)",
+            background: "rgba(0,0,0,0.4)",
+          },
+          wrapper: {
+            boxShadow: "0 0 20px rgba(0,0,0,0.15)",
+          }
         }}
+        maskClosable={true}
+        closeIcon={<div style={{ color: "white", fontSize: "16px" }}>✕</div>}
       >
-        <div style={{ display: "flex", alignItems: "center", marginBottom: "16px" }}>
-          <Input.Search
-            placeholder="输入用户名搜索"
+        <div style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          marginBottom: "20px", 
+          background: "#fff", 
+          padding: "12px", 
+          borderRadius: "12px",
+          boxShadow: "0 4px 12px rgba(138, 43, 226, 0.1)",
+        }}>
+          <Input
+            placeholder="搜索用户"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onSearch={handleSearchUsers}
-            enterButton="搜索"
-            loading={loading}
+            onPressEnter={handleSearchUsers}
+            prefix={<SearchOutlined style={{ color: '#8A2BE2' }} />}
             style={{
               flex: 1,
               borderRadius: "8px",
-              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+              border: "1px solid rgba(138, 43, 226, 0.2)",
             }}
           />
           <Button
-            type="text"
-            shape="circle"
-            icon={<RedoOutlined style={{ fontSize: "18px", color: "#fff" }} />}
-            onClick={handleRefresh}
+            type="primary"
+            onClick={handleSearchUsers}
             style={{
-              marginLeft: "8px",
-              backgroundColor: "#1890ff", // 假设刷新按钮背景色为蓝色
-              border: "none",
-              cursor: "pointer",
-              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+              margin: "0 8px",
+              backgroundColor: "#8A2BE2",
+              borderColor: "#8A2BE2",
+              boxShadow: "0 2px 6px rgba(138, 43, 226, 0.2)",
+              borderRadius: "8px",
+            }}
+          >
+            搜索
+          </Button>
+          <Button
+            type="primary"
+            shape="circle"
+            icon={<RedoOutlined />}
+            onClick={() => {
+              if (search.trim()) {
+                handleSearchUsers();
+              } else {
+                messageApi.info("请先输入搜索内容");
+              }
+            }}
+            loading={loading}
+            style={{
+              backgroundColor: "#8A2BE2",
+              borderColor: "#8A2BE2",
+              boxShadow: "0 2px 6px rgba(138, 43, 226, 0.2)",
             }}
           />
         </div>
 
-        <List
-          dataSource={searchResults}
-          renderItem={(result) => (
-            <List.Item
-              style={{
-                borderRadius: "12px",
-                marginBottom: "12px",
-                background: "#fff",
-                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-                padding: "12px",
-              }}
-              actions={[
-                result.email === userEmail ? (
-                  <span style={{ color: "#888", fontWeight: "bold" }}>这是你自己</span>
-                ) : result.is_friend ? (
-                  <span style={{ color: "#4caf50", fontWeight: "bold" }}>已是好友</span>
-                ) : (
-                  <Button
-                    type="primary"
+        <div style={{ 
+          background: "#fff", 
+          borderRadius: "12px", 
+          padding: "16px 20px",
+          boxShadow: "0 4px 12px rgba(138, 43, 226, 0.1)",
+          flex: 1,
+          height: "calc(100% - 76px)",
+          overflowY: "auto",
+        }}>
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: '12px' }}>
+              <Spin size="large" />
+              <Text type="secondary">搜索中...</Text>
+            </div>
+          ) : searchResults.length > 0 ? (
+            <>
+              <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between' }}>
+                <Text strong style={{ color: '#8A2BE2' }}>
+                  搜索结果 ({searchResults.length})
+                </Text>
+                <Text type="secondary" style={{ fontSize: '13px' }}>
+                  搜索: "{search}"
+                </Text>
+              </div>
+              <Divider style={{ margin: '0 0 16px', borderColor: 'rgba(138, 43, 226, 0.1)' }} />
+              <List
+                dataSource={searchResults}
+                renderItem={(result) => (
+                  <List.Item
                     style={{
-                      backgroundColor: "#4caf50",
-                      borderColor: "#4caf50",
                       borderRadius: "12px",
-                      padding: "0 16px",
+                      marginBottom: "16px",
+                      background: result.deleted 
+                        ? "linear-gradient(to right, rgba(255, 77, 79, 0.03), rgba(255, 77, 79, 0.07))"
+                        : "linear-gradient(to right, rgba(138, 43, 226, 0.03), rgba(138, 43, 226, 0.07))",
+                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
+                      padding: "16px",
+                      border: result.deleted 
+                        ? "1px solid rgba(255, 77, 79, 0.1)"
+                        : "1px solid rgba(138, 43, 226, 0.1)",
+                      transition: "all 0.3s ease",
                     }}
-                    onClick={() => handleAddFriend(result.user_id)}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = "0 6px 16px rgba(138, 43, 226, 0.12)";
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.05)";
+                      e.currentTarget.style.transform = "translateY(0)";
+                    }}
                   >
-                    添加好友
-                  </Button>
-                ),
-              ]}
-            >
-              <List.Item.Meta
-                avatar={
-                  <Avatar
-                    src={result.avatar}
-                    size={48}
-                    style={{
-                      border: "2px solid #4caf50",
-                      padding: "2px",
-                      borderRadius: "50%",
-                    }}
-                  />
-                }
-                title={<span style={{ fontWeight: "bold", fontSize: "16px" }}>{result.name}</span>}
-                description={<span style={{ color: "#888", fontSize: "14px" }}>{result.email}</span>}
+                    <List.Item.Meta
+                      avatar={
+                        <div style={{ position: 'relative' }}>
+                          <Avatar
+                            src={result.avatar}
+                            size={50}
+                            style={{
+                              border: result.deleted 
+                                ? "2px solid rgba(255, 77, 79, 0.5)"
+                                : "2px solid rgba(138, 43, 226, 0.5)",
+                              backgroundColor: "white",
+                              boxShadow: "0 4px 8px rgba(0,0,0,0.1)"
+                            }}
+                          />
+                          {result.deleted && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                bottom: 0,
+                                right: 0,
+                                width: '14px',
+                                height: '14px',
+                                backgroundColor: '#ff4d4f',
+                                borderRadius: '50%',
+                                border: '2px solid white',
+                              }}
+                            />
+                          )}
+                        </div>
+                      }
+                      title={
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <Text strong style={{ fontSize: "16px" }}>
+                            {result.name}
+                          </Text>
+                          {result.email === userEmail && (
+                            <Tag 
+                              color="blue" 
+                              style={{ marginLeft: '8px', borderRadius: '4px' }}
+                            >
+                              自己
+                            </Tag>
+                          )}
+                          {result.is_friend && (
+                            <Tag 
+                              color="#8A2BE2" 
+                              icon={<CheckCircleOutlined />}
+                              style={{ marginLeft: '8px', borderRadius: '4px' }}
+                            >
+                              已是好友
+                            </Tag>
+                          )}
+                          {result.deleted && (
+                            <Tag 
+                              color="error" 
+                              style={{ marginLeft: '8px', borderRadius: '4px' }}
+                            >
+                              已注销
+                            </Tag>
+                          )}
+                        </div>
+                      }
+                      description={
+                        <div style={{ display: 'flex', alignItems: 'center', marginTop: '4px' }}>
+                          <MailOutlined style={{ fontSize: '14px', marginRight: '6px', color: '#8A2BE2' }} />
+                          <Text type="secondary">{result.email}</Text>
+                        </div>
+                      }
+                    />
+                    {!(result.email === userEmail || result.is_friend || result.deleted) && (
+                      <Button
+                        type="primary"
+                        icon={<UserAddOutlined />}
+                        style={{
+                          backgroundColor: "#8A2BE2",
+                          borderColor: "#8A2BE2",
+                          borderRadius: "8px",
+                          boxShadow: "0 2px 6px rgba(138, 43, 226, 0.2)",
+                          marginLeft: '16px'
+                        }}
+                        onClick={() => handleAddFriend(result)}
+                      >
+                        添加好友
+                      </Button>
+                    )}
+                    {result.is_friend && (
+                      <Button
+                        type="default"
+                        icon={<MessageOutlined />}
+                        style={{
+                          borderRadius: "8px",
+                          marginLeft: '16px',
+                          borderColor: "#8A2BE2",
+                          color: "#8A2BE2"
+                        }}
+                        onClick={() => messageApi.info("消息功能正在开发中...")}
+                      >
+                        发送消息
+                      </Button>
+                    )}
+                  </List.Item>
+                )}
               />
-            </List.Item>
+            </>
+          ) : search ? (
+            <Empty 
+              description="没有找到匹配的用户" 
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              style={{ margin: '40px 0' }}
+            />
+          ) : (
+            <div style={{ 
+              height: '100%', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              justifyContent: 'center', 
+              alignItems: 'center',
+              color: '#8A2BE2',
+              opacity: 0.7
+            }}>
+              <SearchOutlined style={{ fontSize: '64px', marginBottom: '16px', opacity: 0.4 }} />
+              <Text style={{ fontSize: '16px', color: '#8A2BE2' }}>搜索用户添加好友</Text>
+              <Text type="secondary" style={{ marginTop: '8px', textAlign: 'center', maxWidth: '300px' }}>
+                输入用户名或邮箱查找您想添加的好友
+              </Text>
+            </div>
           )}
-        />
-        <Modal
-          title="发送好友请求"
-          visible={isModalVisible}
-          onCancel={() => setIsModalVisible(false)}
-          footer={[
-            <Button key="cancel" onClick={() => setIsModalVisible(false)}>
-              取消
-            </Button>,
-            <Button key="send" type="primary" onClick={handleSendMessage}>
-              发送
-            </Button>,
-          ]}
-        >
-          <Input
-            placeholder="请输入消息..."
-            value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
-          />
-        </Modal>
+        </div>
       </Drawer>
+
+      {/* 好友申请模态框 */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', color: "#8A2BE2" }}>
+            <UserAddOutlined style={{ marginRight: 8 }} />
+            <span>发送好友申请</span>
+          </div>
+        }
+        open={isModalVisible}
+        onCancel={() => setIsModalVisible(false)}
+        footer={[
+          <Button 
+            key="cancel" 
+            onClick={() => setIsModalVisible(false)}
+            style={{ borderRadius: '6px' }}
+          >
+            取消
+          </Button>,
+          <Button 
+            key="send" 
+            type="primary" 
+            onClick={handleSendMessage}
+            style={{ 
+              borderRadius: '6px',
+              backgroundColor: "#8A2BE2",
+              borderColor: "#8A2BE2",
+            }}
+          >
+            发送申请
+          </Button>,
+        ]}
+        styles={{
+          mask: { backdropFilter: 'blur(2px)', background: 'rgba(0,0,0,0.4)' },
+          header: { borderBottom: '1px solid rgba(138, 43, 226, 0.1)' },
+          footer: { borderTop: '1px solid rgba(138, 43, 226, 0.1)' },
+        }}
+        maskClosable={true}
+        width={420}
+        centered
+      >
+        {selectedUser && (
+          <div style={{ padding: '10px 0 20px' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              background: 'rgba(138, 43, 226, 0.05)',
+              padding: '16px',
+              borderRadius: '8px',
+              marginBottom: '20px'
+            }}>
+              <Avatar 
+                src={selectedUser.avatar}
+                size={46}
+                style={{
+                  border: '2px solid #8A2BE2',
+                  backgroundColor: "white",
+                }}
+              />
+              <div style={{ marginLeft: '16px' }}>
+                <Text strong>{selectedUser.name}</Text>
+                <div style={{ display: 'flex', alignItems: 'center', marginTop: '4px' }}>
+                  <MailOutlined style={{ fontSize: '12px', marginRight: '6px', color: '#8A2BE2' }} />
+                  <Text type="secondary" style={{ fontSize: '13px' }}>{selectedUser.email}</Text>
+                </div>
+              </div>
+            </div>
+            
+            <Text strong style={{ display: 'block', marginBottom: '10px', color: '#555' }}>
+              申请附言 (选填)
+            </Text>
+            <TextArea
+              placeholder="请输入您的好友申请消息..."
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              maxLength={100}
+              style={{ 
+                borderRadius: '8px', 
+                minHeight: '80px',
+                borderColor: 'rgba(138, 43, 226, 0.2)'
+              }}
+              showCount
+            />
+            
+            <div style={{ 
+              marginTop: '16px', 
+              padding: '12px', 
+              borderRadius: '6px', 
+              background: 'rgba(250, 219, 20, 0.08)',
+              border: '1px solid rgba(250, 219, 20, 0.2)'
+            }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                <InfoCircleOutlined style={{ color: '#faad14', marginTop: '3px' }} />
+                <div>
+                  <Text style={{ fontSize: '13px' }}>
+                    发送时间: {getFormattedDate()}
+                  </Text>
+                  <br />
+                  <Text type="secondary" style={{ fontSize: '13px' }}>
+                    对方会收到您的好友申请，并决定是否接受
+                  </Text>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </>
   );
 };
