@@ -52,13 +52,6 @@ const WelcomePage = () => {
       messageApi.error('请输入密码');
       return;
     }
-    
-    // 简单的邮箱格式验证
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(userEmail)) {
-      messageApi.error('请输入有效的邮箱地址');
-      return;
-    }
 
     setLoading(true);
     try {
