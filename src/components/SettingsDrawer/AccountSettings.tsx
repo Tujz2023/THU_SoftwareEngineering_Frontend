@@ -651,16 +651,13 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
             marginBottom: '16px'
           }}>
             <Text strong style={{ color: '#ff4d4f', display: 'block', marginBottom: '8px' }}>
-              注销账户将导致以下后果：
+              注销账户提示：
             </Text>
-            <ul style={{ margin: 0, paddingLeft: '20px' }}>
-              <li>您的个人资料将被永久删除</li>
-              <li>您将无法访问您的消息记录</li>
-              <li>您的好友关系将被解除</li>
-              <li>此操作无法撤销</li>
-            </ul>
+            <Paragraph style={{ margin: 0 }}>
+              您的账户将被标记为已注销状态，但不会有任何其他后果。您的个人资料、消息记录和好友关系都将保留。
+            </Paragraph>
           </div>
-          <Paragraph type="secondary">您确定要注销账户吗？此操作不可撤销。</Paragraph>
+          <Paragraph type="secondary">您确定要注销账户吗？</Paragraph>
         </Modal>
       </div>
     </>

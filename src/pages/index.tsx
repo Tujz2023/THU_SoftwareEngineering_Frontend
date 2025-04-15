@@ -1,20 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from '../constants/string';
-import { Typography, Card, Input, Button, message } from 'antd';
-import { motion } from 'framer-motion'; // 引入 framer-motion
-import Cookies from 'js-cookie'; // 引入 js-cookie 库
-import { encrypt, decrypt } from '../utils/crypto';
+import { Typography, Card, Input, Button, message, Spin, Divider } from 'antd';
+import { motion } from 'framer-motion';
+import Cookies from 'js-cookie';
+import { encrypt } from '../utils/crypto';
+import { MailOutlined, LockOutlined, LoginOutlined, UserAddOutlined } from '@ant-design/icons';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const WelcomePage = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const [userEmail, setUserEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const [showAlert, setShowAlert] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
     // 检查 cookies 中是否已存在 jwtToken
@@ -25,6 +28,10 @@ const WelcomePage = () => {
     } else {
       setIsAuthenticated(false);
     }
+    // 短暂延迟以显示加载动画
+    setTimeout(() => {
+      setInitialLoading(false);
+    }, 800);
   }, [router]);
 
   useEffect(() => {
@@ -35,152 +42,316 @@ const WelcomePage = () => {
   }, [showAlert]);
 
   const handleLogin = async () => {
+    // 表单验证
+    if (!userEmail.trim()) {
+      messageApi.error('请输入邮箱');
+      return;
+    }
+    
+    if (!password) {
+      messageApi.error('请输入密码');
+      return;
+    }
+    
+    // 简单的邮箱格式验证
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(userEmail)) {
+      messageApi.error('请输入有效的邮箱地址');
+      return;
+    }
 
-    const encrypt_password = await encrypt(password);
-    await fetch(`/api/account/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        "email": userEmail,
-        "password": encrypt_password
-      }),
-    })
-      .then((res) => res.json())
-      .then((res) => {
-        if (Number(res.code) === 0) {
-          // 将 JWT Token 存储到 Cookie 中
-          Cookies.set('jwtToken', res.token, { expires: 3 }); // 设置有效期为 3 天
-          Cookies.set('userEmail', userEmail, { expires: 3 }); // 设置有效期为 3 天
-          messageApi.open({
+    setLoading(true);
+    try {
+      const encrypt_password = await encrypt(password);
+      const response = await fetch(`/api/account/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          "email": userEmail,
+          "password": encrypt_password
+        }),
+      });
+      
+      const res = await response.json();
+      
+      if (Number(res.code) === 0) {
+        // 将 JWT Token 存储到 Cookie 中
+        Cookies.set('jwtToken', res.token, { expires: 3 }); // 设置有效期为 3 天
+        Cookies.set('userEmail', userEmail, { expires: 3 }); // 设置有效期为 3 天
+        
+        messageApi.open({
           type: 'success',
           content: LOGIN_SUCCESS_PREFIX + userEmail + " 正在跳转至聊天界面..."
-        }).then(() => {router.push('/chat')});
-        } else {
-          messageApi.open({
-          type: 'error',
-          content: LOGIN_FAILED + res.info
         });
-        }
-      })
-      .catch((err) => alert(FAILURE_PREFIX + err));
+        
+        // 添加延迟，使用户能看到成功消息
+        setTimeout(() => {
+          router.push('/chat');
+        }, 1000);
+      } else {
+        messageApi.error(LOGIN_FAILED + res.info);
+      }
+    } catch (err) {
+      messageApi.error(FAILURE_PREFIX + "登录请求失败，请检查网络连接");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRegister = () => {
     router.push('/register');
   };
 
-  if (isAuthenticated) {
-    return <p>您已登录，正在跳转...</p>;
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    }
+  };
+
+  if (initialLoading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div style={{ textAlign: 'center' }}>
+          <Spin size="large" />
+          <Text style={{ display: 'block', marginTop: '16px', color: '#8A2BE2' }}>正在加载...</Text>
+        </div>
+      </div>
+    );
   }
 
-  // console.log(encrypt("abc"));
-  // console.log(decrypt("U5d2yOCZBHTULtPZilkoaA=="));
+  if (isAuthenticated) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-r from-blue-50 to-indigo-50">
+        <Spin size="large" />
+        <Text style={{ marginTop: '16px', color: '#8A2BE2' }}>您已登录，正在跳转...</Text>
+      </div>
+    );
+  }
+
   return (
     <>
       {contextHolder}
-      <motion.div
+      <div 
         className="h-screen w-screen flex flex-col items-center justify-center"
-        // initial={{ opacity: 0, y: -50 }} // 初始状态
-        // animate={{ opacity: 1, y: 0 }} // 动画结束状态
-        // transition={{ duration: 1 }} // 动画持续时间
-        initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 1 }}
-      style={{
-        backgroundImage: 'url("/login.png")', // 替换为你的背景图像路径
-        backgroundSize: 'cover', // 确保图像覆盖整个背景
-        backgroundPosition: 'center', // 居中显示背景图像
-        backgroundRepeat: 'no-repeat', // 防止背景图像重复
-      }}
+        style={{
+          background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(124, 58, 237, 0.1) 100%)',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
       >
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-        >
-          <Title
-            level={1}
-            className="text-5xl font-extrabold mb-12 bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-blue-300"
-            style={{
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              color: 'transparent',
-              backgroundImage: 'linear-gradient(to right,rgb(64, 225, 102), #93c5fd)',
-            }}
-          >
-            🚀 欢迎来到即时通讯系统 🎉
-          </Title>
-        </motion.div>
+        {/* 背景装饰元素 */}
+        <div 
+          style={{
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            background: `url("/login.png")`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            filter: 'blur(1px)',
+            opacity: 0.6,
+            zIndex: 0,
+          }}
+        />
+        
+        {/* 装饰圆形 */}
+        <motion.div 
+          style={{
+            position: 'absolute',
+            width: '300px',
+            height: '300px',
+            borderRadius: '50%',
+            background: 'linear-gradient(45deg, rgba(59, 130, 246, 0.3), rgba(124, 58, 237, 0.3))',
+            top: '-50px',
+            left: '-50px',
+            filter: 'blur(30px)',
+            zIndex: 1,
+          }}
+          animate={{
+            x: [0, 20, 0],
+            y: [0, 30, 0],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+        
+        <motion.div 
+          style={{
+            position: 'absolute',
+            width: '400px',
+            height: '400px',
+            borderRadius: '50%',
+            background: 'linear-gradient(45deg, rgba(124, 58, 237, 0.2), rgba(59, 130, 246, 0.2))',
+            bottom: '-100px',
+            right: '-100px',
+            filter: 'blur(40px)',
+            zIndex: 1,
+          }}
+          animate={{
+            x: [0, -30, 0],
+            y: [0, -40, 0],
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
 
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-        >
-          <Card
-            className="w-96"
-            style={{
-              padding: '2.5rem',
-              borderRadius: '1.5rem',
-              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
-              textAlign: 'center',
-              backgroundColor: 'rgba(255, 255, 255, 0.8)', // 设置背景颜色并调整透明度
-              opacity: 0.9, // 设置整体透明度
-            }}
+        {/* 内容容器 */}
+        <div style={{ zIndex: 2, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          {/* 标题部分 */}
+          <motion.div
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            <Input
-              type="text"
-              placeholder="邮箱"
-              value={userEmail}
-              onChange={(e) => setUserEmail(e.target.value)}
-              className="mb-4"
-              style={{
-                padding: '0.75rem',
-                borderRadius: '1rem',
-                marginBottom: '1rem',
-              }}
-            />
-            <Input.Password
-              placeholder="密码"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mb-6"
-              style={{
-                padding: '0.75rem',
-                borderRadius: '1rem',
-                marginBottom: '1.5rem',
-              }}
-            />
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <Title
+                level={1}
+                style={{
+                  fontSize: '2.8rem',
+                  fontWeight: 800,
+                  marginBottom: '0.5rem',
+                  background: 'linear-gradient(to right, #8A2BE2, #4169E1)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  color: 'transparent',
+                  textShadow: '0 2px 10px rgba(138, 43, 226, 0.2)',
+                }}
+              >
+                即时通讯系统
+              </Title>
+              <Text style={{ 
+                fontSize: '1.1rem', 
+                color: '#6B7280',
+                display: 'block',
+                marginTop: '0.5rem',
+              }}>
+                安全、高效、便捷的沟通平台
+              </Text>
+            </div>
+          </motion.div>
 
-            <div className="flex justify-between w-full">
+          {/* 卡片部分 */}
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+            style={{ width: '100%', maxWidth: '400px' }}
+          >
+            <Card
+              style={{
+                borderRadius: '16px',
+                boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)',
+                background: 'rgba(255, 255, 255, 0.9)',
+                backdropFilter: 'blur(10px)',
+                border: 'none',
+                overflow: 'hidden',
+              }}
+              bodyStyle={{ padding: '2rem' }}
+            >
+              <Title level={3} style={{ textAlign: 'center', marginBottom: '1.5rem', color: '#333' }}>
+                欢迎回来
+              </Title>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <Text style={{ display: 'block', marginBottom: '0.5rem', color: '#4B5563', fontWeight: 500 }}>
+                  邮箱
+                </Text>
+                <Input
+                  size="large"
+                  placeholder="请输入邮箱地址"
+                  prefix={<MailOutlined style={{ color: '#8A2BE2' }} />}
+                  value={userEmail}
+                  onChange={(e) => setUserEmail(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  style={{
+                    borderRadius: '8px',
+                    height: '48px',
+                    borderColor: 'rgba(138, 43, 226, 0.3)',
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '2rem' }}>
+                <Text style={{ display: 'block', marginBottom: '0.5rem', color: '#4B5563', fontWeight: 500 }}>
+                  密码
+                </Text>
+                <Input.Password
+                  size="large"
+                  placeholder="请输入密码"
+                  prefix={<LockOutlined style={{ color: '#8A2BE2' }} />}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  style={{
+                    borderRadius: '8px',
+                    height: '48px',
+                    borderColor: 'rgba(138, 43, 226, 0.3)',
+                  }}
+                />
+              </div>
+
               <Button
                 type="primary"
+                size="large"
+                icon={<LoginOutlined />}
                 onClick={handleLogin}
+                loading={loading}
+                block
                 style={{
-                  backgroundColor: '#3b82f6',
-                  borderColor: '#3b82f6',
-                  padding: '0.5rem 1.5rem',
-                  borderRadius: '1rem',
+                  height: '48px',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  background: 'linear-gradient(45deg, #8A2BE2, #4169E1)',
+                  border: 'none',
+                  boxShadow: '0 4px 10px rgba(138, 43, 226, 0.2)',
                 }}
               >
                 登录
               </Button>
+
+              <Divider style={{ margin: '1.5rem 0', color: '#9CA3AF' }}>
+                <Text style={{ color: '#6B7280', fontSize: '0.9rem' }}>还没有账号？</Text>
+              </Divider>
+
               <Button
-                type="link"
+                size="large"
+                icon={<UserAddOutlined />}
                 onClick={handleRegister}
+                block
                 style={{
-                  color: '#3b82f6',
-                  textDecoration: 'underline',
+                  height: '48px',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  borderColor: '#8A2BE2',
+                  color: '#8A2BE2',
                 }}
               >
-                还没有用户名？点击注册
+                注册新账号
               </Button>
-            </div>
-          </Card>
-        </motion.div>
-      </motion.div>
+            </Card>
+          </motion.div>
+
+          {/* 页脚部分 */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1, delay: 1 }}
+            style={{ marginTop: '2rem', textAlign: 'center', zIndex: 2 }}
+          >
+            <Text style={{ color: '#6B7280' }}>
+              © {new Date().getFullYear()} 即时通讯系统 · 安全可靠的沟通平台
+            </Text>
+          </motion.div>
+        </div>
+      </div>
     </>
   );
 };

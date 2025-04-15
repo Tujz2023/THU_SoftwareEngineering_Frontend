@@ -78,12 +78,20 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
   const handleAddFriend = (user: SearchResult) => {
     setTargetUserId(user.user_id);
     setSelectedUser(user);
-    setMessageText('');
+    // 设置默认附言
+    setMessageText(`你好，请求添加你为好友。`);
     setIsModalVisible(true);
-  }
+  };
 
+  // 修改 handleSendMessage 函数，添加非空验证
   const handleSendMessage = async () => {
     const token = Cookies.get("jwtToken");
+    
+    // 验证附言不为空
+    if (!messageText.trim()) {
+      messageApi.error("附言不能为空");
+      return;
+    }
 
     try {
       const response = await fetch("/api/add_friend", {
@@ -104,15 +112,6 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
         messageApi.success(res.message || "好友申请已发送");
         setIsModalVisible(false);
         setMessageText('');
-        
-        // 更新本地搜索结果状态
-        setSearchResults(prev => 
-          prev.map(item => 
-            item.user_id === targetUserId 
-              ? { ...item, is_friend: true } 
-              : item
-          )
-        );
       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
@@ -375,19 +374,18 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
                       </Button>
                     )}
                     {result.is_friend && (
-                      <Button
-                        type="default"
-                        icon={<MessageOutlined />}
-                        style={{
-                          borderRadius: "8px",
+                      <Tag 
+                        color="#8A2BE2" 
+                        icon={<CheckCircleOutlined />}
+                        style={{ 
                           marginLeft: '16px',
-                          borderColor: "#8A2BE2",
-                          color: "#8A2BE2"
+                          borderRadius: '4px',
+                          padding: '5px 12px',
+                          fontSize: '14px'
                         }}
-                        onClick={() => messageApi.info("消息功能正在开发中...")}
                       >
-                        发送消息
-                      </Button>
+                        已是好友
+                      </Tag>
                     )}
                   </List.Item>
                 )}
@@ -412,7 +410,7 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
               <SearchOutlined style={{ fontSize: '64px', marginBottom: '16px', opacity: 0.4 }} />
               <Text style={{ fontSize: '16px', color: '#8A2BE2' }}>搜索用户添加好友</Text>
               <Text type="secondary" style={{ marginTop: '8px', textAlign: 'center', maxWidth: '300px' }}>
-                输入用户名或邮箱查找您想添加的好友
+                输入用户名查找您想添加的好友
               </Text>
             </div>
           )}
@@ -487,7 +485,7 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
             </div>
             
             <Text strong style={{ display: 'block', marginBottom: '10px', color: '#555' }}>
-              申请附言 (选填)
+              申请附言 <Text type="danger" style={{ fontSize: '13px' }}>*</Text>
             </Text>
             <TextArea
               placeholder="请输入您的好友申请消息..."
@@ -497,9 +495,11 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
               style={{ 
                 borderRadius: '8px', 
                 minHeight: '80px',
-                borderColor: 'rgba(138, 43, 226, 0.2)'
+                borderColor: messageText.trim() ? 'rgba(138, 43, 226, 0.2)' : 'rgba(255, 77, 79, 0.3)'
               }}
+              status={messageText.trim() ? '' : 'error'}
               showCount
+              required
             />
             
             <div style={{ 
