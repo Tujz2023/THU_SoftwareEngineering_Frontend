@@ -3,6 +3,7 @@ import { Drawer, List, Input, Button, Typography, message, Avatar, Modal, Dropdo
 import { PlusOutlined, UserAddOutlined, RedoOutlined, EditOutlined, DeleteOutlined, TeamOutlined, InfoCircleOutlined, SearchOutlined, MoreOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import Cookies from "js-cookie";
 import { useRouter } from "next/router";
+import { Friend } from "../utils/types";
 
 const { Title, Text, Paragraph } = Typography;
 const { Search } = Input;
@@ -16,14 +17,6 @@ interface Member {
   id: string;
   email: string;
   name: string;
-  avatar: string;
-  deleted: boolean;
-}
-
-interface Friend {
-  id: string;
-  name: string;
-  email: string;
   avatar: string;
   deleted: boolean;
 }

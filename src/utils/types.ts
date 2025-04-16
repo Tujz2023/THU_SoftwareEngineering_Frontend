@@ -7,4 +7,12 @@ export interface FriendRequest {
   message: string;
   created_at: string;
   status: number;
-}
+};
+
+export interface Friend {
+  id: string;
+  email: string;
+  name: string;
+  avatar: string;
+  deleted?: boolean;
+};

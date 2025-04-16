@@ -3,16 +3,9 @@ import { Modal, Input, Button, Avatar, message, List, Row, Col, Tag, Typography,
 import { SearchOutlined, CloseCircleOutlined, UserOutlined, UserAddOutlined, CheckCircleFilled } from "@ant-design/icons";
 import Cookies from "js-cookie";
 import { useRouter } from "next/router";
+import { Friend } from "../utils/types";
 
 const { Text, Title } = Typography;
-
-interface Friend {
-  id: string;
-  email: string;
-  name: string;
-  avatar: string;
-  deleted?: boolean;
-}
 
 interface CreateGroupModalProps {
   visible: boolean;

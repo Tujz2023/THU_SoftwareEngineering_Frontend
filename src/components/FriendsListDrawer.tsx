@@ -6,16 +6,9 @@ import Cookies from "js-cookie";
 import SearchUserDrawer from "./SearchUserDrawer";
 import FriendRequestDetails from "./FriendRequestDetails";
 import { FriendRequest } from "../utils/types";
+import { Friend } from "../utils/types";
 
 const { Title, Text, Paragraph } = Typography;
-
-interface Friend {
-  id: string;
-  email: string;
-  name: string;
-  avatar: string;
-  deleted?: boolean;
-}
 
 interface FriendsListDrawerProps {
   visible: boolean;
