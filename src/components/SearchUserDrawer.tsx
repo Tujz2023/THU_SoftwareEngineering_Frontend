@@ -331,9 +331,9 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
                               自己
                             </Tag>
                           )}
-                          {result.is_friend && (
+                          {(result.is_friend && result.email !== userEmail) && (
                             <Tag 
-                              color="#8A2BE2" 
+                              color="green" 
                               icon={<CheckCircleOutlined />}
                               style={{ marginLeft: '8px', borderRadius: '4px' }}
                             >
@@ -373,7 +373,7 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
                         添加好友
                       </Button>
                     )}
-                    {result.is_friend && (
+                    {/* {result.is_friend && (
                       <Tag 
                         color="#8A2BE2" 
                         icon={<CheckCircleOutlined />}
@@ -386,7 +386,7 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
                       >
                         已是好友
                       </Tag>
-                    )}
+                    )} */}
                   </List.Item>
                 )}
               />
@@ -512,10 +512,10 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
               <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                 <InfoCircleOutlined style={{ color: '#faad14', marginTop: '3px' }} />
                 <div>
-                  <Text style={{ fontSize: '13px' }}>
+                  {/* <Text style={{ fontSize: '13px' }}>
                     发送时间: {getFormattedDate()}
                   </Text>
-                  <br />
+                  <br /> */}
                   <Text type="secondary" style={{ fontSize: '13px' }}>
                     对方会收到您的好友申请，并决定是否接受
                   </Text>

@@ -419,12 +419,12 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
               name="avatar"
             >
               <Upload
-                name="avatar"
-                listType="picture-card"
-                className="avatar-uploader"
-                showUploadList={false}
-                beforeUpload={beforeUpload}
-                style={{ width: '100%' }}
+              name="avatar"
+              listType="picture-card"
+              className="avatar-uploader"
+              showUploadList={false}
+              beforeUpload={beforeUpload}
+              style={{ width: '100%' }}
               >
                 {form.getFieldValue('avatar') ? (
                   <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -445,12 +445,9 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
                   </div>
                 ) : (
                   <div style={{ 
-                    padding: '16px', 
+                    padding: '10px', 
                     textAlign: 'center', 
                     color: '#8A2BE2',
-                    background: 'rgba(138, 43, 226, 0.03)',
-                    borderRadius: '4px',
-                    border: '1px dashed rgba(138, 43, 226, 0.3)'
                   }}>
                     {uploading ? (
                       <div>
@@ -459,7 +456,7 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
                       </div>
                     ) : (
                       <div>
-                        <UploadOutlined style={{ fontSize: '24px', marginBottom: '8px' }} />
+                        { <UploadOutlined style={{ fontSize: '24px', marginBottom: '8px' }} /> }
                         <div>点击上传</div>
                         <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
                           仅支持 JPG 格式，小于 2MB

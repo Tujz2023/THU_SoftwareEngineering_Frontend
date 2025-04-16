@@ -23,15 +23,17 @@ const WelcomePage = () => {
     // 检查 cookies 中是否已存在 jwtToken
     const jwtToken = Cookies.get('jwtToken');
     if (jwtToken) {
+      setInitialLoading(false);
       setIsAuthenticated(true);
       router.push('/chat').then(() => setShowAlert(true));
+      console.log(initialLoading);
     } else {
       setIsAuthenticated(false);
+      // 短暂延迟以显示加载动画
+      setTimeout(() => {
+        setInitialLoading(false);
+      }, 800);
     }
-    // 短暂延迟以显示加载动画
-    setTimeout(() => {
-      setInitialLoading(false);
-    }, 800);
   }, [router]);
 
   useEffect(() => {
@@ -211,18 +213,18 @@ const WelcomePage = () => {
                   fontSize: '2.8rem',
                   fontWeight: 800,
                   marginBottom: '0.5rem',
-                  background: 'linear-gradient(to right, #8A2BE2, #4169E1)',
+                  background: 'linear-gradient(to right,rgb(255, 242, 2),rgb(250, 191, 73))',
                   backgroundClip: 'text',
                   WebkitBackgroundClip: 'text',
                   color: 'transparent',
-                  textShadow: '0 2px 10px rgba(138, 43, 226, 0.2)',
+                  textShadow: '0px 2px 10px rgba(255, 223, 134, 0.5)',
                 }}
               >
                 即时通讯系统
               </Title>
               <Text style={{ 
                 fontSize: '1.1rem', 
-                color: '#6B7280',
+                color: '#fff',
                 display: 'block',
                 marginTop: '0.5rem',
               }}>
@@ -339,7 +341,7 @@ const WelcomePage = () => {
             transition={{ duration: 1, delay: 1 }}
             style={{ marginTop: '2rem', textAlign: 'center', zIndex: 2 }}
           >
-            <Text style={{ color: '#6B7280' }}>
+            <Text style={{ color: '#fff' }}>
               © {new Date().getFullYear()} 即时通讯系统 · 安全可靠的沟通平台
             </Text>
           </motion.div>

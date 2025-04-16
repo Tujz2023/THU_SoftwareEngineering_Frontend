@@ -312,6 +312,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
       0: { text: "等待处理", color: "#faad14", icon: <ClockCircleOutlined /> },
       1: { text: "已同意", color: "#8A2BE2", icon: <CheckCircleOutlined /> },
       2: { text: "已拒绝", color: "#ff4d4f", icon: <CloseCircleOutlined /> },
+      3: { text: "已成为好友", color: "#52c41a", icon: <UserAddOutlined /> },
     };
     
     return statusConfig[status] || { text: "未知", color: "#999", icon: <InfoCircleOutlined /> };
@@ -549,7 +550,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
                       </div>
                     }
                   />
-                  <Button
+                  {! friend.deleted && (<Button
                     type="text"
                     icon={<MessageOutlined style={{ color: friend.deleted ? '#999' : '#8A2BE2' }} />}
                     style={{ marginLeft: '8px' }}
@@ -560,7 +561,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
                         messageApi.info("消息功能开发中...");
                       }
                     }}
-                  />
+                  />)}
                 </List.Item>
               )}
             />
@@ -923,8 +924,8 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
         visible={isDetailsModalVisible}
         onClose={() => setIsDetailsModalVisible(false)}
         request={selectedRequest}
-        onAccept={handleAcceptRequest}
-        onReject={handleRejectRequest}
+        onAccept={(senderId, receiverId) => handleAcceptRequest(senderId, receiverId)}
+        onReject={(senderId, receiverId) => handleRejectRequest(senderId, receiverId)}
       />
 
       <SearchUserDrawer

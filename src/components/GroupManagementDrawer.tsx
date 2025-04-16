@@ -59,7 +59,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
   const [editingGroup, setEditingGroup] = useState<Group | undefined>(undefined);
   const [editingGroupName, setEditingGroupName] = useState("");
   const [searchKeyword, setSearchKeyword] = useState(""); 
-  const [groupNameSearchKeyword, setGroupNameSearchKeyword] = useState(""); 
+  const [groupNameSearchKeyword, setGroupNameSearchKeyword] = useState("");
   const router = useRouter();
 
   // 获取分组列表
@@ -398,11 +398,6 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
         },
       });
 
-      if (response.status === 401) {
-        messageApi.error("JWT令牌无效或已过期，请重新登录");
-        return;
-      }
-
       const res = await response.json();
 
       if (res.code === 0) {
@@ -452,15 +447,6 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
       if (res.code === 0) {
         messageApi.success(res.message || "添加好友到分组成功");
         fetchGroupMembers(selectedGroupId); // 刷新分组成员列表
-        
-        // 更新好友列表中的状态（已在组内）
-        const updatedFriends = friends.map(friend => {
-          if (friend.id === friendId) {
-            return { ...friend, inGroup: true };
-          }
-          return friend;
-        });
-        setFriends(updatedFriends);
       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
@@ -1227,7 +1213,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
                         )}
                         {isInGroup && (
                           <Tag 
-                            color="#8A2BE2" 
+                            color="green" 
                             style={{ marginLeft: '8px', fontSize: '12px' }}
                           >
                             已在组内

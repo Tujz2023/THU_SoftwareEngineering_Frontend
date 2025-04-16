@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Cookies from "js-cookie";
 import { Input, Button, Layout, List, Avatar, Typography, message, Badge, Empty, Tooltip, Spin, Divider, Tag } from "antd";
@@ -32,6 +32,7 @@ interface Message {
   text: string;
   time: string;
 }
+// TODO: 需要处理有reply_to的情况？
 
 const ChatPage = () => {
   const [messageApi, contextHolder] = message.useMessage();
@@ -50,32 +51,33 @@ const ChatPage = () => {
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [unhandleRequests, setUnhandleRequests] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  const [isCreateCovModalVisible, setIsCreateCovModalVisible] = useState(false);  // 添加创建群聊模态框的状态
 
   const [friendListDrwaerWebsocket, setFriendListDrwaerWebsocket] = useState(false);
   const [groupDrawerWebsocket, setGroupDrawerWebsocket] = useState(false);
 
+  // ==============================================================
   // 消息区域的引用，用于自动滚动到底部
   const messagesEndRef = useRef<HTMLDivElement>({
-  scrollIntoView: () => {}, // 添加一个空的 scrollIntoView 方法
-} as unknown as HTMLDivElement);
-
-  // 添加创建群聊模态框的状态
-  const [isCreateCovModalVisible, setIsCreateCovModalVisible] = useState(false);
-
-  // 从 Cookie 中获取 JWT Token
-  const token = Cookies.get("jwtToken");
-
+    scrollIntoView: () => {}, // 添加一个空的 scrollIntoView 方法
+  } as unknown as HTMLDivElement);
   // 自动滚动到底部
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   };
-
   // 在消息更新后滚动到底部
   useEffect(() => {
     scrollToBottom();
   }, [messages, selectedConversationId]);
+  // TODO: 这仨是啥？
+  // ==============================================================
+
+  // 从 Cookie 中获取 JWT Token
+  const token = Cookies.get("jwtToken");
 
   const fetchUserInfo = () => {
     fetch("/api/account/info", {
@@ -132,6 +134,8 @@ const ChatPage = () => {
       if (res.code === 0) {
         const requests = res.requests;
         setFriendRequests(res.requests);
+        // console.log("fetch friend requests success!!!")
+        // console.log(requests)
         const unhandledCount = requests.filter((request: FriendRequest) => request.status === 0).length;
         setUnhandleRequests(unhandledCount);
       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
@@ -172,6 +176,8 @@ const ChatPage = () => {
 
       const res = await response.json();
       if (res.code === 0) {
+        // console.log("fetch conversations list success!!!")
+        // console.log(res.conversation)
         setConversations(res.conversation);
       } else if (res.code === -2) {
         Cookies.remove("jwtToken");
@@ -189,15 +195,9 @@ const ChatPage = () => {
     }
   };
 
-  useEffect(() => {
-    fetchUserInfo();
-    fetchConversations();
-    fetchFriendRequests(); // TODO: 改为获取到好友申请的websocket消息之后调用
-  }, []);
-
-  const fn = (param: number) => {
+  const fn = useCallback((param: number) => {
     if (param === 2) fetchFriendRequests();
-    else if (param === 3) {
+    else if (param === 3) { //TODO: 暂无需处理(delete friend的websocket需要加上create_conv里面friend_list的部分)
       if (isFriendsDrawerVisible === true) {
         setFriendListDrwaerWebsocket(true);
       }
@@ -208,7 +208,7 @@ const ChatPage = () => {
     else {
       alert("尚未实现...");
     }
-  };
+  }, []);
 
   if (token) {
     useMessageListener(token, fn);
@@ -219,10 +219,15 @@ const ChatPage = () => {
     // 检查 cookies 中是否已存在 jwtToken
     const jwtToken = Cookies.get("jwtToken");
     if (!jwtToken) {
+      setInitialLoading(false);
       setIsAuthenticated(false);
       router.push("/").then(() => setShowAlert(true));
     } else {
       setIsAuthenticated(true);
+      // 短暂延迟以显示加载动画
+      setTimeout(() => {
+        setInitialLoading(false);
+      }, 800);
     }
   }, [router]);
 
@@ -233,8 +238,27 @@ const ChatPage = () => {
     }
   }, [showAlert]);
 
+  
+  useEffect(() => {
+    if (Cookies.get("jwtToken")) {
+      fetchUserInfo();
+      fetchConversations();
+      fetchFriendRequests();
+    } 
+  }, []);
+
+  // TODO: 需要修改：sender、time的格式
   const handleSendMessage = () => {
-    if (!input.trim() || !selectedConversationId) return;
+    if (! input.trim())
+    {
+      messageApi.error("不能发送空消息");
+      return;
+    }
+    if (! selectedConversationId)
+    {
+      messageApi.error("请选择一个聊天");
+      return ;
+    }
     const newMessage = { sender: "me", text: input, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) };
     setMessages((prevMessages) => ({
       ...prevMessages,
@@ -283,6 +307,17 @@ const ChatPage = () => {
       return timeString;
     }
   };
+
+  if (initialLoading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div style={{ textAlign: 'center' }}>
+          <Spin size="large" />
+          <Text style={{ display: 'block', marginTop: '16px', color: '#8A2BE2' }}>正在加载...</Text>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -404,7 +439,7 @@ const ChatPage = () => {
                 </div>
               </Tooltip>
               
-              <Tooltip title="群组" placement="right">
+              <Tooltip title="好友分组" placement="right">
                 <div style={{ 
                   width: '40px',
                   height: '40px',
@@ -609,23 +644,14 @@ const ChatPage = () => {
                 <Text strong style={{ fontSize: '16px' }}>
                   {conversations.find((c) => c.id === selectedConversationId)?.name}
                 </Text>
-                <Text type="secondary" style={{ fontSize: '13px' }}>
-                  {conversations.find((c) => c.id === selectedConversationId)?.is_chat_group
-                    ? "群聊"
-                    : "在线"}
-                </Text>
               </div>
-              <div style={{ marginLeft: "auto", display: "flex", gap: "16px" }}>
-                <Tooltip title="图片">
-                  <Button type="text" shape="circle" icon={<PictureOutlined style={{ fontSize: "18px", color: "#8A2BE2" }} />} />
-                </Tooltip>
-                <Tooltip title="表情">
-                  <Button type="text" shape="circle" icon={<SmileOutlined style={{ fontSize: "18px", color: "#8A2BE2" }} />} />
-                </Tooltip>
+              {/* TODO(暂无需考虑): 额外信息===================================================================== */}
+              <div style={{ marginLeft: "auto" }}>
                 <Tooltip title="更多">
                   <Button type="text" shape="circle" icon={<MoreOutlined style={{ fontSize: "18px", color: "#8A2BE2" }} />} />
                 </Tooltip>
               </div>
+              {/* TODO(暂无需考虑): 额外信息===================================================================== */}
             </Header>
           ) : (
             <Header
@@ -766,6 +792,7 @@ const ChatPage = () => {
               gap: "12px"
             }}>
               <div style={{ display: 'flex', gap: '8px' }}>
+                {/* TODO(暂无需考虑): 额外信息===================================================================== */}
                 <Tooltip title="表情">
                   <Button 
                     type="text" 
@@ -808,6 +835,7 @@ const ChatPage = () => {
                     }}
                   />
                 </Tooltip>
+                {/* TODO(暂无需考虑): 额外信息===================================================================== */}
               </div>
               
               <TextArea
