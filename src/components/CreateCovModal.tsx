@@ -72,14 +72,17 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ visible, onClose, o
       return;
     }
 
-    if (!groupName.trim()) {
-      messageApi.error("请输入群聊名称");
+    // 检查成员数量是否合法
+    if (selectedFriends.length < 2) {
+      messageApi.error("群聊需要至少包含两位好友");
       return;
     }
 
-    if (selectedFriends.length === 0) {
-      messageApi.error("请至少选择一位好友");
-      return;
+    // 检查群聊名称，如果为空则设置默认值"群聊"
+    let finalGroupName = groupName.trim();
+    if (!finalGroupName) {
+      finalGroupName = "群聊";
+      setGroupName(finalGroupName);
     }
 
     setLoading(true);
@@ -93,7 +96,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ visible, onClose, o
         },
         body: JSON.stringify({
           members: selectedFriends,
-          name: groupName,
+          name: finalGroupName,
         }),
       });
 

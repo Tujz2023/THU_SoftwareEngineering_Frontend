@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Cookies from "js-cookie";
 import { Input, Button, Layout, List, Avatar, Typography, message, Badge, Empty, Tooltip, Spin, Divider, Tag } from "antd";
-import { MessageOutlined, TeamOutlined, SettingOutlined, PictureOutlined, SmileOutlined, MoreOutlined, ContactsOutlined, SendOutlined, SearchOutlined, ClockCircleOutlined, PlusCircleOutlined } from "@ant-design/icons";
+import { MessageOutlined, TeamOutlined, SettingOutlined, PictureOutlined, SmileOutlined, MoreOutlined, ContactsOutlined, SendOutlined, SearchOutlined, ClockCircleOutlined, PlusCircleOutlined, CloseOutlined } from "@ant-design/icons";
 import 'antd/dist/reset.css';
 import SettingsDrawer from "../components/SettingsDrawer";
 import FriendsListDrawer from "../components/FriendsListDrawer";
@@ -28,11 +28,17 @@ interface Conversation {
 }
 
 interface Message {
+  id: string;
+  content: string;
   sender: string;
-  text: string;
-  time: string;
+  senderid: string;
+  sendername: string;
+  senderavatar: string;
+  reply_to?: string;
+  reply_to_id?: string;
+  conversation: string;
+  created_time: string;
 }
-// TODO: 需要处理有reply_to的情况？
 
 const ChatPage = () => {
   const [messageApi, contextHolder] = message.useMessage();
@@ -57,6 +63,23 @@ const ChatPage = () => {
 
   const [friendListDrwaerWebsocket, setFriendListDrwaerWebsocket] = useState(false);
   const [groupDrawerWebsocket, setGroupDrawerWebsocket] = useState(false);
+
+  // 添加回复相关状态及功能
+  const [replyToMessage, setReplyToMessage] = useState<Message | undefined>(undefined);
+
+  // 添加加载更多消息的函数
+  const loadMoreMessages = () => {
+    if (!selectedConversationId || !messages[selectedConversationId]?.length) {
+      return;
+    }
+    
+    // 获取当前消息列表中最早消息的时间
+    const earliestMessage = messages[selectedConversationId][0];
+    const fromTime = earliestMessage.created_time;
+    
+    // 调用fetchMessages加载更早的消息
+    fetchMessages(selectedConversationId, fromTime);
+  };
 
   // ==============================================================
   // 消息区域的引用，用于自动滚动到底部
@@ -195,6 +218,74 @@ const ChatPage = () => {
     }
   };
 
+  // 更新 fetchMessages 函数，添加对回复消息的处理以及from参数支持
+  const fetchMessages = async (conversationId: string, fromTime?: string) => {
+    if (!token) {
+      messageApi.error("未登录，请先登录");
+      return;
+    }
+
+    try {
+      // 构建请求URL，支持从特定时间开始获取消息
+      let url = `/api/conversations/messages?conversationId=${conversationId}`;
+      if (fromTime) {
+        url += `&from=${fromTime}`;
+      }
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+      });
+
+      const res = await response.json();
+      if (res.code === 0) {
+        // 转换消息格式以适应UI展示
+        const formattedMessages = res.messages.map((msg: any) => ({
+          id: msg.id,
+          content: msg.content,
+          sender: msg.senderid === userInfo?.id ? "me" : "other",
+          senderid: msg.senderid,
+          sendername: msg.sendername,
+          senderavatar: msg.senderavatar,
+          reply_to: msg.reply_to,
+          reply_to_id: msg.reply_to_id,
+          created_time: msg.created_time,
+          conversation: msg.conversation
+        }));
+        
+        // 如果是加载更多消息，则将新消息添加到现有消息之前
+        if (fromTime) {
+          setMessages(prev => ({
+            ...prev,
+            [conversationId]: [...formattedMessages, ...(prev[conversationId] || [])]
+          }));
+        } else {
+          // 如果是初次加载，直接替换现有消息列表
+          setMessages(prev => ({
+            ...prev,
+            [conversationId]: formattedMessages
+          }));
+        }
+        
+        // 在成功获取消息后刷新会话列表，因为未读消息数会变化
+        fetchConversations();
+      } else if (res.code === -2) {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
+          router.push("/");
+        });
+      } else {
+        messageApi.error(res.info || "获取消息失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    }
+  };
+
   const fn = useCallback((param: number) => {
     if (param === 2) fetchFriendRequests();
     else if (param === 3) { //TODO: 暂无需处理(delete friend的websocket需要加上create_conv里面friend_list的部分)
@@ -205,10 +296,18 @@ const ChatPage = () => {
         setGroupDrawerWebsocket(true);
       }
     } //删除需要的函数
+    else if (param === 1) {
+      if (selectedConversationId) {
+        fetchMessages(selectedConversationId);
+      }
+      else {
+        fetchConversations();
+      }
+    }
     else {
       alert("尚未实现...");
     }
-  }, []);
+  }, [selectedConversationId, isFriendsDrawerVisible, isGroupDrawerVisible]);
 
   if (token) {
     useMessageListener(token, fn);
@@ -247,28 +346,84 @@ const ChatPage = () => {
     } 
   }, []);
 
-  // TODO: 需要修改：sender、time的格式
-  const handleSendMessage = () => {
-    if (! input.trim())
-    {
+  // 更新 handleSendMessage 函数，修改API请求参数名称
+  const handleSendMessage = async () => {
+    if (!input.trim()) {
       messageApi.error("不能发送空消息");
       return;
     }
-    if (! selectedConversationId)
-    {
+    if (!selectedConversationId) {
       messageApi.error("请选择一个聊天");
-      return ;
+      return;
     }
-    const newMessage = { sender: "me", text: input, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) };
-    setMessages((prevMessages) => ({
-      ...prevMessages,
-      [selectedConversationId]: [...(prevMessages[selectedConversationId] || []), newMessage],
-    }));
-    setInput("");
+
+    try {
+      const response = await fetch("/api/conversations/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+        body: JSON.stringify({
+          conversationId: selectedConversationId,
+          content: input.trim(),
+          reply_to: replyToMessage?.id // 修改 reply_to_id 为 reply_to
+        }),
+      });
+
+      const res = await response.json();
+      if (res.code === 0) {
+        // 消息发送成功，添加到本地消息列表
+        const currentTime = new Date().toISOString();
+        const newMessage = { 
+          id: res.id || Date.now().toString(), // 使用响应中的id或临时id
+          content: input.trim(), 
+          sender: "me", 
+          senderid: userInfo?.id,
+          sendername: userInfo?.name,
+          senderavatar: userInfo?.avatar,
+          created_time: currentTime,
+          conversation: selectedConversationId,
+          reply_to: replyToMessage?.content,
+          reply_to_id: replyToMessage?.id
+        };
+
+        setMessages((prevMessages) => ({
+          ...prevMessages,
+          [selectedConversationId]: [...(prevMessages[selectedConversationId] || []), newMessage],
+        }));
+        
+        // 更新会话列表中的最后一条消息
+        setConversations(conversations.map(conv => {
+          if (conv.id === selectedConversationId) {
+            return {
+              ...conv,
+              last_message: input.trim(),
+              last_message_time: currentTime
+            };
+          }
+          return conv;
+        }));
+        
+        setInput("");
+        setReplyToMessage(undefined); // 清除回复状态
+      } else if (res.code === -2) {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
+          router.push("/");
+        });
+      } else {
+        messageApi.error(res.info || "发送消息失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    }
   };
 
   const handleConversationClick = (conversationId: string) => {
     setSelectedConversationId(conversationId);
+    fetchMessages(conversationId);
   };
 
   const handleIconClick = (iconName: string) => {
@@ -287,6 +442,18 @@ const ChatPage = () => {
 
   const handleAvatarClick = () => {
     setIsDrawerVisible(true);
+  };
+
+  // 处理回复消息的函数
+  const handleReplyMessage = (message: Message) => {
+    setReplyToMessage(message);
+    // 聚焦输入框
+    document.querySelector('textarea')?.focus();
+  };
+
+  // 取消回复
+  const cancelReply = () => {
+    setReplyToMessage(undefined);
   };
 
   // 格式化时间显示
@@ -586,15 +753,47 @@ const ChatPage = () => {
                               }}
                             />
                             {conversation.unread_count > 0 && (
-                              <Badge 
-                                count={conversation.unread_count} 
-                                style={{
-                                  position: 'absolute',
-                                  right: -5,
-                                  top: -5,
-                                  boxShadow: '0 0 0 2px white'
-                                }}
-                              />
+                              conversation.notice_able ? (
+                                <Badge 
+                                  count={conversation.unread_count} 
+                                  style={{
+                                    position: 'absolute',
+                                    right: -5,
+                                    top: -5,
+                                    boxShadow: '0 0 0 2px white'
+                                  }}
+                                />
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                  <Badge 
+                                    dot 
+                                    style={{
+                                      position: 'absolute',
+                                      right: -2,
+                                      top: -2,
+                                      boxShadow: '0 0 0 2px white'
+                                    }}
+                                  />
+                                  <Tooltip title="消息免打扰" placement="top">
+                                    <Badge
+                                      count={<ClockCircleOutlined style={{ color: '#f5222d', fontSize: '10px' }} />}
+                                      style={{
+                                        position: 'absolute',
+                                        right: -12,
+                                        top: -12,
+                                        backgroundColor: '#fff',
+                                        boxShadow: '0 0 0 1px #f0f0f0',
+                                        borderRadius: '50%',
+                                        width: '16px',
+                                        height: '16px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                      }}
+                                    />
+                                  </Tooltip>
+                                </div>
+                              )
                             )}
                           </div>
                         }
@@ -682,44 +881,81 @@ const ChatPage = () => {
               backgroundSize: '40px 40px'
             }}
           >
+            {selectedConversationId && messages[selectedConversationId]?.length > 0 && (
+              <div style={{ textAlign: 'center', margin: '0 0 16px 0' }}>
+                <Button 
+                  type="link" 
+                  onClick={loadMoreMessages}
+                  style={{ color: '#8A2BE2', fontSize: '13px' }}
+                >
+                  加载更多消息
+                </Button>
+              </div>
+            )}
+            
             {selectedConversationId ? (
               messages[selectedConversationId]?.length > 0 ? (
                 <>
                   {messages[selectedConversationId]?.map((msg, index) => (
-                    <div key={index} style={{ 
+                    <div key={msg.id || index} style={{ 
                       display: "flex", 
                       justifyContent: msg.sender === "me" ? "flex-end" : "flex-start", 
                       marginBottom: "24px"
                     }}>
                       {msg.sender !== "me" && (
                         <Avatar 
-                          src={conversations.find(c => c.id === selectedConversationId)?.avatar} 
+                          src={msg.senderavatar} 
                           style={{ marginRight: '8px', alignSelf: 'flex-end' }}
                         />
                       )}
-                      <div style={{ 
-                        position: 'relative',
-                        maxWidth: "60%", 
-                        padding: "12px 16px", 
-                        borderRadius: msg.sender === "me" 
-                          ? "18px 18px 0 18px" 
-                          : "0 18px 18px 18px", 
-                        background: msg.sender === "me" 
-                          ? "linear-gradient(135deg, #9F4BDF, #8A2BE2)" 
-                          : "#fff",
-                        boxShadow: msg.sender === "me"
-                          ? "0 2px 10px rgba(138, 43, 226, 0.25)"
-                          : "0 2px 10px rgba(0, 0, 0, 0.08)",
-                        border: msg.sender === "me"
-                          ? "none"
-                          : "1px solid rgba(0, 0, 0, 0.05)"
-                      }}>
+                      <div 
+                        style={{ 
+                          position: 'relative',
+                          maxWidth: "60%", 
+                          padding: "12px 16px", 
+                          borderRadius: msg.sender === "me" 
+                            ? "18px 18px 0 18px" 
+                            : "0 18px 18px 18px", 
+                          background: msg.sender === "me" 
+                            ? "linear-gradient(135deg, #9F4BDF, #8A2BE2)" 
+                            : "#fff",
+                          boxShadow: msg.sender === "me"
+                            ? "0 2px 10px rgba(138, 43, 226, 0.25)"
+                            : "0 2px 10px rgba(0, 0, 0, 0.08)",
+                          border: msg.sender === "me"
+                            ? "none"
+                            : "1px solid rgba(0, 0, 0, 0.05)",
+                          cursor: "pointer"
+                        }}
+                        onClick={() => handleReplyMessage(msg)}
+                      >
+                        {/* 如果是回复消息，显示引用部分 */}
+                        {msg.reply_to && (
+                          <div style={{
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            backgroundColor: msg.sender === "me" ? 'rgba(255, 255, 255, 0.2)' : 'rgba(138, 43, 226, 0.1)',
+                            marginBottom: '8px',
+                            fontSize: '13px',
+                            color: msg.sender === "me" ? 'rgba(255, 255, 255, 0.8)' : '#666',
+                            position: 'relative',
+                            borderLeft: `3px solid ${msg.sender === "me" ? 'rgba(255, 255, 255, 0.5)' : '#8A2BE2'}`
+                          }}>
+                            <Text ellipsis style={{ 
+                              maxWidth: '100%', 
+                              color: msg.sender === "me" ? 'rgba(255, 255, 255, 0.8)' : '#666' 
+                            }}>
+                              {msg.reply_to}
+                            </Text>
+                          </div>
+                        )}
+                        
                         <p style={{ 
                           margin: 0, 
                           color: msg.sender === "me" ? "white" : "#333",
                           fontSize: '15px',
                           lineHeight: '1.5'
-                        }}>{msg.text}</p>
+                        }}>{msg.content}</p>
                         <div style={{ 
                           display: 'flex',
                           justifyContent: 'flex-end',
@@ -734,7 +970,7 @@ const ChatPage = () => {
                           <Text style={{ 
                             fontSize: "11px", 
                             color: msg.sender === "me" ? "rgba(255,255,255,0.7)" : "#999",
-                          }}>{msg.time}</Text>
+                          }}>{msg.created_time}</Text>
                         </div>
                       </div>
                       {msg.sender === "me" && (
@@ -788,104 +1024,135 @@ const ChatPage = () => {
               borderTop: "1px solid #f0f0f0", 
               background: "#fff", 
               display: "flex",
-              alignItems: "flex-end",
+              flexDirection: "column",
               gap: "12px"
             }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {/* TODO(暂无需考虑): 额外信息===================================================================== */}
-                <Tooltip title="表情">
+              {/* 回复消息预览 */}
+              {replyToMessage && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '8px 12px',
+                  backgroundColor: 'rgba(138, 43, 226, 0.08)',
+                  borderRadius: '8px',
+                  borderLeft: '3px solid #8A2BE2'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ fontSize: '13px', color: '#666' }}>
+                      回复 <span style={{ color: '#8A2BE2', fontWeight: 'bold' }}>{replyToMessage.sendername}</span>
+                    </div>
+                    <div style={{ color: '#666', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {replyToMessage.content}
+                    </div>
+                  </div>
                   <Button 
                     type="text" 
-                    shape="circle" 
-                    icon={<SmileOutlined style={{ fontSize: 18, color: '#8A2BE2' }}/>}
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      transition: 'all 0.3s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'rgba(138, 43, 226, 0.1)';
-                      e.currentTarget.style.transform = 'scale(1.1)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.transform = 'scale(1)';
-                    }}
+                    size="small" 
+                    icon={<CloseOutlined />} 
+                    onClick={cancelReply}
+                    style={{ color: '#999' }}
                   />
-                </Tooltip>
-                <Tooltip title="图片">
-                  <Button 
-                    type="text" 
-                    shape="circle" 
-                    icon={<PictureOutlined style={{ fontSize: 18, color: '#8A2BE2' }}/>}
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      transition: 'all 0.3s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'rgba(138, 43, 226, 0.1)';
-                      e.currentTarget.style.transform = 'scale(1.1)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.transform = 'scale(1)';
-                    }}
-                  />
-                </Tooltip>
-                {/* TODO(暂无需考虑): 额外信息===================================================================== */}
-              </div>
+                </div>
+              )}
               
-              <TextArea
-                placeholder="输入消息..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
-                style={{ 
-                  flex: 1, 
-                  resize: 'none',
-                  borderRadius: '16px',
-                  padding: '10px 16px',
-                  minHeight: '44px',
-                  maxHeight: '120px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                  border: '1px solid #e6e6f0',
-                  transition: 'all 0.3s ease'
-                }}
-                autoSize={{ minRows: 1, maxRows: 4 }}
-              />
-              
-              <Tooltip title="发送消息">
-                <Button 
-                  type="primary" 
-                  shape="circle"
-                  icon={<SendOutlined />}
-                  onClick={handleSendMessage} 
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {/* TODO(暂无需考虑): 额外信息===================================================================== */}
+                  <Tooltip title="表情">
+                    <Button 
+                      type="text" 
+                      shape="circle" 
+                      icon={<SmileOutlined style={{ fontSize: 18, color: '#8A2BE2' }}/>}
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        transition: 'all 0.3s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(138, 43, 226, 0.1)';
+                        e.currentTarget.style.transform = 'scale(1.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }}
+                    />
+                  </Tooltip>
+                  <Tooltip title="图片">
+                    <Button 
+                      type="text" 
+                      shape="circle" 
+                      icon={<PictureOutlined style={{ fontSize: 18, color: '#8A2BE2' }}/>}
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        transition: 'all 0.3s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(138, 43, 226, 0.1)';
+                        e.currentTarget.style.transform = 'scale(1.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }}
+                    />
+                  </Tooltip>
+                  {/* TODO(暂无需考虑): 额外信息===================================================================== */}
+                </div>
+                
+                <TextArea
+                  placeholder="输入消息..."
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
                   style={{ 
-                    backgroundColor: "#8A2BE2", 
-                    borderColor: "#8A2BE2",
-                    width: '44px',
-                    height: '44px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(138, 43, 226, 0.3)',
-                    transition: 'all 0.3s'
+                    flex: 1, 
+                    resize: 'none',
+                    borderRadius: '16px',
+                    padding: '10px 16px',
+                    minHeight: '44px',
+                    maxHeight: '120px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                    border: '1px solid #e6e6f0',
+                    transition: 'all 0.3s ease'
                   }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#7B1FA2';
-                    e.currentTarget.style.borderColor = '#7B1FA2';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#8A2BE2';
-                    e.currentTarget.style.borderColor = '#8A2BE2';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}
+                  autoSize={{ minRows: 1, maxRows: 4 }}
                 />
-              </Tooltip>
+                
+                <Tooltip title="发送消息">
+                  <Button 
+                    type="primary" 
+                    shape="circle"
+                    icon={<SendOutlined />}
+                    onClick={handleSendMessage} 
+                    style={{ 
+                      backgroundColor: "#8A2BE2", 
+                      borderColor: "#8A2BE2",
+                      width: '44px',
+                      height: '44px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 4px 12px rgba(138, 43, 226, 0.3)',
+                      transition: 'all 0.3s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#7B1FA2';
+                      e.currentTarget.style.borderColor = '#7B1FA2';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#8A2BE2';
+                      e.currentTarget.style.borderColor = '#8A2BE2';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  />
+                </Tooltip>
+              </div>
             </div>
           )}
         </Layout>
