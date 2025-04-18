@@ -25,10 +25,12 @@ interface Conversation {
   is_top: boolean;
   notice_able: boolean;
   unread_count: number;
+  friend_id?: string;
 }
 
 interface Message {
   id: string;
+  type: number;
   content: string;
   sender: string;
   senderid: string;
@@ -45,7 +47,7 @@ const ChatPage = () => {
   const [search, setSearch] = useState("");
   const [selectedConversationId, setSelectedConversationId] = useState<string | undefined>();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [messages, setMessages] = useState<{ [key: string]: Message[] }>({});
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [isFriendsDrawerVisible, setIsFriendsDrawerVisible] = useState(false);
@@ -63,18 +65,19 @@ const ChatPage = () => {
 
   const [friendListDrwaerWebsocket, setFriendListDrwaerWebsocket] = useState(false);
   const [groupDrawerWebsocket, setGroupDrawerWebsocket] = useState(false);
+  const [createConvWebsocket, setCreateConvWebsocket] = useState(false);
 
   // 添加回复相关状态及功能
   const [replyToMessage, setReplyToMessage] = useState<Message | undefined>(undefined);
 
   // 添加加载更多消息的函数
   const loadMoreMessages = () => {
-    if (!selectedConversationId || !messages[selectedConversationId]?.length) {
+    if (!selectedConversationId || !messages?.length) {
       return;
     }
     
     // 获取当前消息列表中最早消息的时间
-    const earliestMessage = messages[selectedConversationId][0];
+    const earliestMessage = messages[0];
     const fromTime = earliestMessage.created_time;
     
     // 调用fetchMessages加载更早的消息
@@ -139,10 +142,6 @@ const ChatPage = () => {
 
   const fetchFriendRequests = async () => {
     const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     try {
       const response = await fetch("/api/friend_requests", {
@@ -182,10 +181,6 @@ const ChatPage = () => {
 
   // 获取会话列表
   const fetchConversations = async () => {
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     setLoading(true);
     try {
@@ -220,10 +215,6 @@ const ChatPage = () => {
 
   // 更新 fetchMessages 函数，添加对回复消息的处理以及from参数支持
   const fetchMessages = async (conversationId: string, fromTime?: string) => {
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     try {
       // 构建请求URL，支持从特定时间开始获取消息
@@ -250,26 +241,26 @@ const ChatPage = () => {
           senderid: msg.senderid,
           sendername: msg.sendername,
           senderavatar: msg.senderavatar,
-          reply_to: msg.reply_to,
-          reply_to_id: msg.reply_to_id,
+          reply_to: msg?.reply_to,
+          reply_to_id: msg?.reply_to_id,
           created_time: msg.created_time,
           conversation: msg.conversation
         }));
         
-        // 如果是加载更多消息，则将新消息添加到现有消息之前
-        if (fromTime) {
-          setMessages(prev => ({
-            ...prev,
-            [conversationId]: [...formattedMessages, ...(prev[conversationId] || [])]
-          }));
-        } else {
-          // 如果是初次加载，直接替换现有消息列表
-          setMessages(prev => ({
-            ...prev,
-            [conversationId]: formattedMessages
-          }));
-        }
-        
+        // // 如果是加载更多消息，则将新消息添加到现有消息之前
+        // if (fromTime) {
+        //   setMessages(prev => ({
+        //     ...prev,
+        //     [conversationId]: [...formattedMessages, ...(prev[conversationId] || [])]
+        //   }));
+        // } else {
+        //   // 如果是初次加载，直接替换现有消息列表
+        //   setMessages(prev => ({
+        //     ...prev,
+        //     [conversationId]: formattedMessages
+        //   }));
+        // }
+        setMessages(formattedMessages);
         // 在成功获取消息后刷新会话列表，因为未读消息数会变化
         fetchConversations();
       } else if (res.code === -2) {
@@ -295,6 +286,9 @@ const ChatPage = () => {
       if (isGroupDrawerVisible === true) {
         setGroupDrawerWebsocket(true);
       }
+      if (isCreateCovModalVisible == true) {
+        setCreateConvWebsocket(true);
+      }
     } //删除需要的函数
     else if (param === 1) {
       if (selectedConversationId) {
@@ -307,7 +301,7 @@ const ChatPage = () => {
     else {
       alert("尚未实现...");
     }
-  }, [selectedConversationId, isFriendsDrawerVisible, isGroupDrawerVisible]);
+  }, [selectedConversationId, isFriendsDrawerVisible, isGroupDrawerVisible, isCreateCovModalVisible]);
 
   if (token) {
     useMessageListener(token, fn);
@@ -373,38 +367,39 @@ const ChatPage = () => {
 
       const res = await response.json();
       if (res.code === 0) {
-        // 消息发送成功，添加到本地消息列表
-        const currentTime = new Date().toISOString();
-        const newMessage = { 
-          id: res.id || Date.now().toString(), // 使用响应中的id或临时id
-          content: input.trim(), 
-          sender: "me", 
-          senderid: userInfo?.id,
-          sendername: userInfo?.name,
-          senderavatar: userInfo?.avatar,
-          created_time: currentTime,
-          conversation: selectedConversationId,
-          reply_to: replyToMessage?.content,
-          reply_to_id: replyToMessage?.id
-        };
+        // // 消息发送成功，添加到本地消息列表
+        // const currentTime = new Date().toISOString();
+        // const newMessage = { 
+        //   id: res.id || Date.now().toString(), // 使用响应中的id或临时id
+        //   content: input.trim(), 
+        //   sender: "me", 
+        //   senderid: userInfo?.id,
+        //   sendername: userInfo?.name,
+        //   senderavatar: userInfo?.avatar,
+        //   created_time: currentTime,
+        //   conversation: selectedConversationId,
+        //   reply_to: replyToMessage?.content,
+        //   reply_to_id: replyToMessage?.id
+        // };
 
-        setMessages((prevMessages) => ({
-          ...prevMessages,
-          [selectedConversationId]: [...(prevMessages[selectedConversationId] || []), newMessage],
-        }));
+        // setMessages((prevMessages) => ({
+        //   ...prevMessages,
+        //   [selectedConversationId]: [...(prevMessages[selectedConversationId] || []), newMessage],
+        // }));
         
-        // 更新会话列表中的最后一条消息
-        setConversations(conversations.map(conv => {
-          if (conv.id === selectedConversationId) {
-            return {
-              ...conv,
-              last_message: input.trim(),
-              last_message_time: currentTime
-            };
-          }
-          return conv;
-        }));
+        // // 更新会话列表中的最后一条消息
+        // setConversations(conversations.map(conv => {
+        //   if (conv.id === selectedConversationId) {
+        //     return {
+        //       ...conv,
+        //       last_message: input.trim(),
+        //       last_message_time: currentTime
+        //     };
+        //   }
+        //   return conv;
+        // }));
         
+        // 发送消息之后notify会发送websocket消息，因此不需要前端更新
         setInput("");
         setReplyToMessage(undefined); // 清除回复状态
       } else if (res.code === -2) {
@@ -444,6 +439,7 @@ const ChatPage = () => {
     setIsDrawerVisible(true);
   };
 
+  // TODO(回复消息暂无需处理): 聚焦输入框是什么？？？？
   // 处理回复消息的函数
   const handleReplyMessage = (message: Message) => {
     setReplyToMessage(message);
@@ -800,15 +796,15 @@ const ChatPage = () => {
                         title={
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Text strong style={{ fontSize: '15px' }}>{conversation.name}</Text>
-                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                            {conversation.last_message_time && <Text type="secondary" style={{ fontSize: '12px' }}>
                               {formatTime(conversation.last_message_time)}
-                            </Text>
+                            </Text>}
                           </div>
                         }
                         description={
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Text ellipsis style={{ maxWidth: '180px', fontSize: '13px', color: '#666' }}>
-                              {conversation.last_message}
+                              {conversation.last_message_time ? conversation.last_message : '暂无消息'}
                             </Text>
                             {conversation.is_top && (
                               <Tag color="#8A2BE2" style={{ margin: 0, fontSize: '10px' }}>置顶</Tag>
@@ -869,6 +865,7 @@ const ChatPage = () => {
             </Header>
           )}
 
+          {/*TODO: 需重新布局，显示messages最下面的消息，向上滚动可以查看messages上面的消息(初始默认滚轮在最下面)*/}
           {/* 聊天内容区域 */}
           <Content 
             style={{ 
@@ -881,7 +878,7 @@ const ChatPage = () => {
               backgroundSize: '40px 40px'
             }}
           >
-            {selectedConversationId && messages[selectedConversationId]?.length > 0 && (
+            {selectedConversationId && messages?.length > 0 && (
               <div style={{ textAlign: 'center', margin: '0 0 16px 0' }}>
                 <Button 
                   type="link" 
@@ -894,10 +891,10 @@ const ChatPage = () => {
             )}
             
             {selectedConversationId ? (
-              messages[selectedConversationId]?.length > 0 ? (
+              messages?.length > 0 ? (
                 <>
-                  {messages[selectedConversationId]?.map((msg, index) => (
-                    <div key={msg.id || index} style={{ 
+                  {messages?.map((msg) => (
+                    <div key={msg.id} style={{ 
                       display: "flex", 
                       justifyContent: msg.sender === "me" ? "flex-end" : "flex-start", 
                       marginBottom: "24px"
@@ -927,9 +924,9 @@ const ChatPage = () => {
                             : "1px solid rgba(0, 0, 0, 0.05)",
                           cursor: "pointer"
                         }}
-                        onClick={() => handleReplyMessage(msg)}
+                        // onClick={() => handleReplyMessage(msg)} // TODO(回复消息暂无需处理): 回复消息（右键或者鼠标悬浮，显示菜单栏，可以查看回复列表以及回复该消息）
                       >
-                        {/* 如果是回复消息，显示引用部分 */}
+                        {/* 如果是回复消息，显示引用部分
                         {msg.reply_to && (
                           <div style={{
                             padding: '8px 12px',
@@ -948,7 +945,7 @@ const ChatPage = () => {
                               {msg.reply_to}
                             </Text>
                           </div>
-                        )}
+                        )} */}
                         
                         <p style={{ 
                           margin: 0, 
@@ -982,6 +979,7 @@ const ChatPage = () => {
                     </div>
                   ))}
                   <div ref={messagesEndRef} />
+                  {/* TODO: 这个messagesEndRef对吗？ */}
                 </>
               ) : (
                 <div style={{ 
@@ -1027,7 +1025,7 @@ const ChatPage = () => {
               flexDirection: "column",
               gap: "12px"
             }}>
-              {/* 回复消息预览 */}
+              {/* 回复消息预览
               {replyToMessage && (
                 <div style={{
                   display: 'flex',
@@ -1054,7 +1052,7 @@ const ChatPage = () => {
                     style={{ color: '#999' }}
                   />
                 </div>
-              )}
+              )} */}
               
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px' }}>
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -1162,6 +1160,8 @@ const ChatPage = () => {
           visible={isCreateCovModalVisible}
           onClose={() => setIsCreateCovModalVisible(false)}
           onSuccess={fetchConversations}
+          websocket={createConvWebsocket}
+          setWebsocket={setCreateConvWebsocket}
         />
 
         {/* 设置抽屉 */}

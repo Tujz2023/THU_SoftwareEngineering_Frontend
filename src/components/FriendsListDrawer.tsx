@@ -152,10 +152,6 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
 
   const handleRejectRequest = async (senderId: string, receiverId: string) => {
     const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     try {
       const response = await fetch("/api/friend_request_handle", {
@@ -200,10 +196,6 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
 
   const fetchFriendDetails = async (friendId: string) => {
     const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     setFriendDetails(undefined); // 清除之前的数据
 
@@ -241,10 +233,6 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
 
   const handleDeleteFriend = async (friendId: string) => {
     const token = Cookies.get("jwtToken");
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     try {
       const response = await fetch("/api/manage_friends", {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Dispatch, SetStateAction } from "react";
 import { Modal, Input, Button, Avatar, message, List, Row, Col, Tag, Typography, Divider, Tooltip, Empty } from "antd";
 import { SearchOutlined, CloseCircleOutlined, UserOutlined, UserAddOutlined, CheckCircleFilled } from "@ant-design/icons";
 import Cookies from "js-cookie";
@@ -11,9 +11,11 @@ interface CreateGroupModalProps {
   visible: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  websocket: boolean;
+  setWebsocket: Dispatch<SetStateAction<boolean>>;
 }
 
-const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ visible, onClose, onSuccess }) => {
+const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ visible, onClose, onSuccess, websocket, setWebsocket }) => {
   const [messageApi, contextHolder] = message.useMessage();
   const router = useRouter();
   const [groupName, setGroupName] = useState("");
@@ -27,10 +29,6 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ visible, onClose, o
 
   // 获取好友列表
   const fetchFriendsList = async () => {
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     try {
       const response = await fetch("/api/friends", {
@@ -67,10 +65,6 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ visible, onClose, o
 
   // 创建群聊
   const createGroup = async () => {
-    if (!token) {
-      messageApi.error("未登录，请先登录");
-      return;
-    }
 
     // 检查成员数量是否合法
     if (selectedFriends.length < 2) {
@@ -150,6 +144,13 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ visible, onClose, o
       setSearchKeyword("");
     }
   }, [visible]);
+
+  useEffect(() => {
+    if (websocket === true) {
+      fetchFriendsList();
+      setWebsocket(false);
+    }
+  }, [websocket]);
 
   // 处理模态框关闭时，重置状态
   const handleCancel = () => {
