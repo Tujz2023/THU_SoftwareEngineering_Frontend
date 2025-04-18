@@ -286,7 +286,7 @@ const ChatPage = () => {
       if (isGroupDrawerVisible === true) {
         setGroupDrawerWebsocket(true);
       }
-      if (isCreateCovModalVisible == true) {
+      if (isCreateCovModalVisible === true) {
         setCreateConvWebsocket(true);
       }
     } //删除需要的函数
