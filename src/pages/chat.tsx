@@ -197,6 +197,10 @@ const ChatPage = () => {
         // console.log("fetch conversations list success!!!")
         // console.log(res.conversation)
         setConversations(res.conversation);
+        const conversationExists = res.conversation.some((conv: Conversation) => conv.id === selectedConversationId);
+        if (!conversationExists) {
+          setSelectedConversationId(undefined); // 如果不存在，则将selectedConversationId置为空
+        }
       } else if (res.code === -2) {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
@@ -279,7 +283,7 @@ const ChatPage = () => {
 
   const fn = useCallback((param: number) => {
     if (param === 2) fetchFriendRequests();
-    else if (param === 3) { //TODO: 暂无需处理(delete friend的websocket需要加上create_conv里面friend_list的部分)
+    else if (param === 3) { 
       if (isFriendsDrawerVisible === true) {
         setFriendListDrwaerWebsocket(true);
       }
@@ -289,6 +293,7 @@ const ChatPage = () => {
       if (isCreateCovModalVisible === true) {
         setCreateConvWebsocket(true);
       }
+      fetchConversations();
     } //删除需要的函数
     else if (param === 1) {
       if (selectedConversationId) {

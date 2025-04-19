@@ -124,6 +124,7 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
   };
 
   const handleEditInfo = async (values: any) => {
+    try {
     const payload = {
       "origin_password": await encrypt(values.origin_password),
       ...((values.name && values.name !== "") && { "name": values.name }),
@@ -175,6 +176,9 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
           });
         }
       });
+    } catch(error) {
+      console.error('Error ', error);
+    }
   };
 
   if (!userInfo) {
