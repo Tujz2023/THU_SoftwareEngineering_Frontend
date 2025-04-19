@@ -16,7 +16,7 @@ const { Text, Title } = Typography;
 const { TextArea } = Input;
 
 interface Conversation {
-  id: string;
+  id: number;
   name: string;
   avatar: string;
   last_message: string;
@@ -25,19 +25,19 @@ interface Conversation {
   is_top: boolean;
   notice_able: boolean;
   unread_count: number;
-  friend_id?: string;
+  friend_id?: number;
 }
 
 interface Message {
-  id: string;
+  id: number;
   type: number;
   content: string;
   sender: string;
-  senderid: string;
+  senderid: number;
   sendername: string;
   senderavatar: string;
   reply_to?: string;
-  reply_to_id?: string;
+  reply_to_id?: number;
   conversation: string;
   created_time: string;
 }
@@ -45,7 +45,7 @@ interface Message {
 const ChatPage = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const [search, setSearch] = useState("");
-  const [selectedConversationId, setSelectedConversationId] = useState<string | undefined>();
+  const [selectedConversationId, setSelectedConversationId] = useState<number>(0);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -74,18 +74,18 @@ const ChatPage = () => {
   const [isFirstLoad, setIsFirstLoad] = useState<boolean>(true);
 
   // 修改加载更多消息的函数
-  const loadMoreMessages = () => {
-    if (!selectedConversationId || !messages?.length) {
-      return;
-    }
+  // const loadMoreMessages = () => {
+  //   if (!selectedConversationId || !messages?.length) {
+  //     return;
+  //   }
     
-    // 获取当前消息列表中最早消息的时间
-    const earliestMessage = messages[0];
-    const fromTime = earliestMessage.created_time;
+  //   // 获取当前消息列表中最早消息的时间
+  //   const earliestMessage = messages[0];
+  //   const fromTime = earliestMessage.created_time;
     
-    // 调用fetchMessages加载更早的消息，明确指定不是首次加载
-    fetchMessages(selectedConversationId, fromTime, false);
-  };
+  //   // 调用fetchMessages加载更早的消息，明确指定不是首次加载
+  //   fetchMessages(selectedConversationId, fromTime, false);
+  // };
 
   const messagesContainerRef = useRef<HTMLDivElement>({
     scrollIntoView: () => {}, // 添加一个空的 scrollIntoView 方法
@@ -99,12 +99,12 @@ const ChatPage = () => {
   };
 
   // 只在初次选择会话时滚动到底部
-  useEffect(() => {
-    if (selectedConversationId && isFirstLoad) {
-      scrollToBottom();
-setIsFirstLoad(false);
-    }
-  }, [selectedConversationId, messages, isFirstLoad]);
+  // useEffect(() => {
+  //   if (selectedConversationId && isFirstLoad) {
+  //     scrollToBottom();
+  //     setIsFirstLoad(false);
+  //   }
+  // }, [selectedConversationId, isFirstLoad]);
 
   // 从 Cookie 中获取 JWT Token
   const token = Cookies.get("jwtToken");
@@ -196,12 +196,10 @@ setIsFirstLoad(false);
 
       const res = await response.json();
       if (res.code === 0) {
-        // console.log("fetch conversations list success!!!")
-        // console.log(res.conversation)
         setConversations(res.conversation);
         const conversationExists = res.conversation.some((conv: Conversation) => conv.id === selectedConversationId);
         if (!conversationExists) {
-          setSelectedConversationId(undefined); // 如果不存在，则将selectedConversationId置为空
+          setSelectedConversationId(0); // 如果不存在，则将selectedConversationId置为空
         }
       } else if (res.code === -2) {
         Cookies.remove("jwtToken");
@@ -220,13 +218,13 @@ setIsFirstLoad(false);
   };
 
   // 在 fetchMessages 函数中增加参数来控制是否需要滚动到底部
-  const fetchMessages = async (conversationId: string, fromTime?: string, shouldScroll: boolean = true) => {
+  const fetchMessages = async (conversationId: number, fromTime?: string, shouldScroll: boolean = true) => {
     try {
       // 构建请求URL，支持从特定时间开始获取消息
       let url = `/api/conversations/messages?conversationId=${conversationId}`;
-      if (fromTime) {
-        url += `&from=${fromTime}`;
-      }
+      // if (fromTime) {
+      //   url += `&from=${fromTime}`;
+      // }
 
       const response = await fetch(url, {
         method: "GET",
@@ -314,6 +312,7 @@ setIsFirstLoad(false);
     else {
       alert("尚未实现...");
     }
+  // }, []);
   }, [selectedConversationId, isFriendsDrawerVisible, isGroupDrawerVisible, isCreateCovModalVisible]);
 
   if (token) {
@@ -381,7 +380,7 @@ setIsFirstLoad(false);
       if (res.code === 0) {
         // 发送消息之后notify会发送websocket消息，因此不需要前端更新
         setInput("");
-        setReplyToMessage(undefined); // 清除回复状态
+        // setReplyToMessage(undefined); // 清除回复状态
       } else if (res.code === -2) {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
@@ -396,11 +395,16 @@ setIsFirstLoad(false);
     }
   };
 
-// 修改会话点击处理函数
-  const handleConversationClick = (conversationId: string) => {
+  useEffect(() => {
+    if (selectedConversationId) {
+      setIsFirstLoad(true); // 重置为首次加载状态
+      fetchMessages(selectedConversationId, undefined, true);
+    }
+  }, [selectedConversationId]);
+
+  // 修改会话点击处理函数
+  const handleConversationClick = (conversationId: number) => {
     setSelectedConversationId(conversationId);
-setIsFirstLoad(true); // 重置为首次加载状态
-    fetchMessages(conversationId, undefined, true); // 明确指示需要滚动
   };
 
   const handleIconClick = (iconName: string) => {
@@ -423,16 +427,16 @@ setIsFirstLoad(true); // 重置为首次加载状态
 
   // TODO(回复消息暂无需处理): 聚焦输入框是什么？？？？
   // 处理回复消息的函数
-  const handleReplyMessage = (message: Message) => {
-    setReplyToMessage(message);
-    // 聚焦输入框
-    document.querySelector('textarea')?.focus();
-  };
+  // const handleReplyMessage = (message: Message) => {
+  //   setReplyToMessage(message);
+  //   // 聚焦输入框
+  //   document.querySelector('textarea')?.focus();
+  // };
 
-  // 取消回复
-  const cancelReply = () => {
-    setReplyToMessage(undefined);
-  };
+  // // 取消回复
+  // const cancelReply = () => {
+  //   setReplyToMessage(undefined);
+  // };
 
   // 格式化时间显示
   const formatTime = (timeString: string) => {
@@ -671,7 +675,7 @@ setIsFirstLoad(true); // 重置为首次加载状态
         <Sider width={320} style={{ background: "#f8f8fc", borderRight: "1px solid #e6e6f0" }}>
           <div style={{ padding: "16px", display: 'flex', flexDirection: 'column', height: '100%' }}>
             <div style={{ margin: '8px 0 24px 0' }}>
-              <Title level={4} style={{ margin: 0, color: '#8A2BE2' }}>消息</Title>
+              <Title level={4} style={{ margin: 0, color: '#8A2BE2' }}>聊天列表</Title>
             </div>
             <Input
               placeholder="搜索会话..."
@@ -702,7 +706,7 @@ setIsFirstLoad(true); // 重置为首次加载状态
                   dataSource={conversations.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))}
                   renderItem={(conversation) => (
                     <List.Item 
-                      onClick={() => handleConversationClick(conversation.id)} 
+                      onClick={() => {handleConversationClick(conversation.id);}} 
                       style={{ 
                         cursor: "pointer",
                         padding: "12px 16px",
@@ -861,13 +865,13 @@ setIsFirstLoad(true); // 重置为首次加载状态
               flexDirection: 'column',
             }}
             ref={messagesContainerRef} // 绑定滚动容器的引用
-            onScroll={(e) => {
-              // 当用户滚动到顶部时，加载更多历史消息
-              const target = e.target as HTMLDivElement;
-              if (target.scrollTop === 0 && messages.length > 0) {
-                loadMoreMessages();
-              }
-            }}
+            // onScroll={(e) => {
+            //   // 当用户滚动到顶部时，加载更多历史消息
+            //   const target = e.target as HTMLDivElement;
+            //   if (target.scrollTop === 0 && messages.length > 0) {
+            //     loadMoreMessages();
+            //   }
+            // }}
           >
             {selectedConversationId ? (
               messages?.length > 0 ? (

@@ -9,12 +9,12 @@ const { Title, Text, Paragraph } = Typography;
 const { Search } = Input;
 
 interface Group {
-  id: string;
+  id: number;
   name: string;
 }
 
 interface Member {
-  id: string;
+  id: number;
   email: string;
   name: string;
   avatar: string;
@@ -35,7 +35,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
   setWebsocket 
 }) => {
   const [groups, setGroups] = useState<Group[]>([]);
-  const [selectedGroupId, setSelectedGroupId] = useState<string | undefined>(undefined);
+  const [selectedGroupId, setSelectedGroupId] = useState<number>(0);
   const [members, setMembers] = useState<Member[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [isFriendListVisible, setIsFriendListVisible] = useState(false);
@@ -44,9 +44,9 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
   const [membersLoading, setMembersLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
-  const [groupToDelete, setGroupToDelete] = useState<string | undefined>(undefined);
+  const [groupToDelete, setGroupToDelete] = useState<number>(0);
   const [isDeleteMemberModalVisible, setIsDeleteMemberModalVisible] = useState(false);
-  const [memberToDelete, setMemberToDelete] = useState<string | undefined>(undefined);
+  const [memberToDelete, setMemberToDelete] = useState<number>(0);
   const [memberToDeleteName, setMemberToDeleteName] = useState<string>("");
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | undefined>(undefined);
@@ -166,7 +166,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
       if (res.code === 0) {
         messageApi.success(res.message || "删除分组成功");
         fetchGroups(); // 刷新分组列表
-        setSelectedGroupId(undefined); // 清空选中分组
+        setSelectedGroupId(0); // 清空选中分组
         setMembers([]); // 清空成员列表
       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
@@ -186,10 +186,10 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
       setLoading(false);
     }
     setIsDeleteModalVisible(false); // 关闭删除确认弹窗
-    setGroupToDelete(undefined); // 清空待删除的分组 ID
+    setGroupToDelete(0); // 清空待删除的分组 ID
   };
 
-  const showDeleteModal = (groupId: string) => {
+  const showDeleteModal = (groupId: number) => {
     setGroupToDelete(groupId);
     setIsDeleteModalVisible(true);
   };
@@ -202,7 +202,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
   };
 
   // 获取分组详情
-  const fetchGroupDetails = async (groupId: string) => {
+  const fetchGroupDetails = async (groupId: number) => {
     const token = Cookies.get("jwtToken");
     setMembersLoading(true);
 
@@ -325,19 +325,19 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
     } finally {
       setLoading(false);
       setIsDeleteMemberModalVisible(false); // 关闭删除确认弹窗
-      setMemberToDelete(undefined); // 清空待删除的成员 ID
+      setMemberToDelete(0); // 清空待删除的成员 ID
       setMemberToDeleteName("");
     }
   };
 
-  const showDeleteMemberModal = (memberId: string, memberName: string) => {
+  const showDeleteMemberModal = (memberId: number, memberName: string) => {
     setMemberToDelete(memberId);
     setMemberToDeleteName(memberName);
     setIsDeleteMemberModalVisible(true);
   };
 
   // 获取分组成员列表
-  const fetchGroupMembers = async (groupId: string) => {
+  const fetchGroupMembers = async (groupId: number) => {
     const token = Cookies.get("jwtToken");
     setMembersLoading(true);
 
@@ -416,7 +416,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
   };
 
   // 添加好友到分组
-  const addFriendToGroup = async (friendId: string) => {
+  const addFriendToGroup = async (friendId: number) => {
     if (!selectedGroupId) {
       messageApi.error("请先选择一个分组");
       return;
@@ -475,7 +475,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
 
   useEffect(() => {
     if (websocket === true) {
-      if (selectedGroupId !== undefined) {
+      if (selectedGroupId) {
         fetchGroupMembers(selectedGroupId);
       }
       if (isFriendListVisible === true) {
@@ -648,7 +648,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
         }
         placement="left"
         onClose={() => {
-          setSelectedGroupId(undefined);
+          setSelectedGroupId(0);
           onClose();
         }}
         open={visible}

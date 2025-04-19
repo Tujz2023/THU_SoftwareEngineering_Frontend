@@ -1,6 +1,6 @@
 export interface FriendRequest {
-  sender_user_id: string;
-  receiver_user_id: string; 
+  sender_user_id: number;
+  receiver_user_id: number; 
   user_email: string;
   user_name: string;
   avatar: string;
@@ -10,7 +10,7 @@ export interface FriendRequest {
 };
 
 export interface Friend {
-  id: string;
+  id: number;
   email: string;
   name: string;
   avatar: string;

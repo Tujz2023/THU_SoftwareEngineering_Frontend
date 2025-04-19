@@ -8,7 +8,7 @@ const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
 interface SearchResult {
-  user_id: string;
+  user_id: number;
   name: string;
   email: string;
   avatar: string;
@@ -28,7 +28,7 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
   const [messageApi, contextHolder] = message.useMessage();
   const [messageText, setMessageText] = useState(''); 
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [targetUserId, setTargetUserId] = useState('');
+  const [targetUserId, setTargetUserId] = useState(0);
   const [selectedUser, setSelectedUser] = useState<SearchResult | undefined>(undefined);
   const router = useRouter();
 

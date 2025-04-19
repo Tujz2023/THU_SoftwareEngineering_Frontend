@@ -19,7 +19,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ visible, onClose, o
   const [messageApi, contextHolder] = message.useMessage();
   const router = useRouter();
   const [groupName, setGroupName] = useState("");
-  const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
+  const [selectedFriends, setSelectedFriends] = useState<number[]>([]);
   const [friendsList, setFriendsList] = useState<Friend[]>([]);
   const [filteredFriends, setFilteredFriends] = useState<Friend[]>([]);
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -161,7 +161,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ visible, onClose, o
   };
 
   // 处理选择/取消选择好友
-  const handleFriendSelect = (friendId: string) => {
+  const handleFriendSelect = (friendId: number) => {
     if (selectedFriends.includes(friendId)) {
       setSelectedFriends(selectedFriends.filter(id => id !== friendId));
     } else {
@@ -170,7 +170,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ visible, onClose, o
   };
 
   // 移除已选择的好友
-  const handleRemoveFriend = (friendId: string) => {
+  const handleRemoveFriend = (friendId: number) => {
     setSelectedFriends(selectedFriends.filter(id => id !== friendId));
   };
 

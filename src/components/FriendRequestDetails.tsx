@@ -7,11 +7,11 @@ const { Title, Text, Paragraph } = Typography;
 interface FriendRequestDetailsProps {
   visible: boolean;
   onClose: () => void;
-  onAccept: (senderId: string, receiverId: string) => void;
-  onReject: (senderId: string, receiverId: string) => void;
+  onAccept: (senderId: number, receiverId: number) => void;
+  onReject: (senderId: number, receiverId: number) => void;
   request: {
-    sender_user_id: string;
-    receiver_user_id: string;
+    sender_user_id: number;
+    receiver_user_id: number;
     user_name: string;
     user_email: string;
     avatar: string;

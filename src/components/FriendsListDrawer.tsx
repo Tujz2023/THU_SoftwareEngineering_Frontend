@@ -110,7 +110,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
     }
   };
 
-  const handleAcceptRequest = async (senderId: string, receiverId: string) => {
+  const handleAcceptRequest = async (senderId: number, receiverId: number) => {
     const token = Cookies.get("jwtToken");
 
     try {
@@ -150,7 +150,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
     }
   };
 
-  const handleRejectRequest = async (senderId: string, receiverId: string) => {
+  const handleRejectRequest = async (senderId: number, receiverId: number) => {
     const token = Cookies.get("jwtToken");
 
     try {
@@ -194,7 +194,13 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
     setIsDetailsModalVisible(true);
   };
 
-  const fetchFriendDetails = async (friendId: string) => {
+  // useEffect(() => {
+  //   if (isFriendModalVisible) {
+  //     console.log("true here");
+  //   }
+  // }, [isFriendModalVisible]);
+
+  const fetchFriendDetails = async (friendId: number) => {
     const token = Cookies.get("jwtToken");
 
     setFriendDetails(undefined); // 清除之前的数据
@@ -231,7 +237,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
     }
   };
 
-  const handleDeleteFriend = async (friendId: string) => {
+  const handleDeleteFriend = async (friendId: number) => {
     const token = Cookies.get("jwtToken");
 
     try {
@@ -278,9 +284,15 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
     setFriendToDelete(undefined);
   };
 
+  useEffect(() => {
+    if (selectedFriend) {
+      fetchFriendDetails(selectedFriend.id)
+    }
+  }, [selectedFriend]);
+
   const handleViewFriendDetails = (friend: Friend) => {
     setSelectedFriend(friend);
-    fetchFriendDetails(friend.id);
+    // fetchFriendDetails(friend.id);
   };
 
   const handleFriendListDrawerClose = () => {
