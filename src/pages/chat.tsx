@@ -70,7 +70,10 @@ const ChatPage = () => {
   // 添加回复相关状态及功能
   const [replyToMessage, setReplyToMessage] = useState<Message | undefined>(undefined);
 
-  // 添加加载更多消息的函数
+  // 添加标记初次加载的状态
+  const [isFirstLoad, setIsFirstLoad] = useState<boolean>(true);
+
+  // 修改加载更多消息的函数
   const loadMoreMessages = () => {
     if (!selectedConversationId || !messages?.length) {
       return;
@@ -80,27 +83,28 @@ const ChatPage = () => {
     const earliestMessage = messages[0];
     const fromTime = earliestMessage.created_time;
     
-    // 调用fetchMessages加载更早的消息
-    fetchMessages(selectedConversationId, fromTime);
+    // 调用fetchMessages加载更早的消息，明确指定不是首次加载
+    fetchMessages(selectedConversationId, fromTime, false);
   };
 
-  // ==============================================================
-  // 消息区域的引用，用于自动滚动到底部
-  const messagesEndRef = useRef<HTMLDivElement>({
+  const messagesContainerRef = useRef<HTMLDivElement>({
     scrollIntoView: () => {}, // 添加一个空的 scrollIntoView 方法
   } as unknown as HTMLDivElement);
-  // 自动滚动到底部
+
+  // 滚动到消息底部的函数
   const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   };
-  // 在消息更新后滚动到底部
+
+  // 只在初次选择会话时滚动到底部
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, selectedConversationId]);
-  // TODO: 这仨是啥？
-  // ==============================================================
+    if (selectedConversationId && isFirstLoad) {
+      scrollToBottom();
+setIsFirstLoad(false);
+    }
+  }, [selectedConversationId, messages, isFirstLoad]);
 
   // 从 Cookie 中获取 JWT Token
   const token = Cookies.get("jwtToken");
@@ -181,8 +185,6 @@ const ChatPage = () => {
 
   // 获取会话列表
   const fetchConversations = async () => {
-
-    setLoading(true);
     try {
       const response = await fetch("/api/conversations", {
         method: "GET",
@@ -217,9 +219,8 @@ const ChatPage = () => {
     }
   };
 
-  // 更新 fetchMessages 函数，添加对回复消息的处理以及from参数支持
-  const fetchMessages = async (conversationId: string, fromTime?: string) => {
-
+  // 在 fetchMessages 函数中增加参数来控制是否需要滚动到底部
+  const fetchMessages = async (conversationId: string, fromTime?: string, shouldScroll: boolean = true) => {
     try {
       // 构建请求URL，支持从特定时间开始获取消息
       let url = `/api/conversations/messages?conversationId=${conversationId}`;
@@ -240,6 +241,7 @@ const ChatPage = () => {
         // 转换消息格式以适应UI展示
         const formattedMessages = res.messages.map((msg: any) => ({
           id: msg.id,
+          type: msg.type,
           content: msg.content,
           sender: msg.senderid === userInfo?.id ? "me" : "other",
           senderid: msg.senderid,
@@ -265,6 +267,12 @@ const ChatPage = () => {
         //   }));
         // }
         setMessages(formattedMessages);
+
+        // 仅在应该滚动且消息非空的情况下滚动到底部
+        if (shouldScroll && formattedMessages.length > 0) {
+          setTimeout(scrollToBottom, 100); // 稍微延迟确保 DOM 已更新
+        }
+        
         // 在成功获取消息后刷新会话列表，因为未读消息数会变化
         fetchConversations();
       } else if (res.code === -2) {
@@ -345,7 +353,6 @@ const ChatPage = () => {
     } 
   }, []);
 
-  // 更新 handleSendMessage 函数，修改API请求参数名称
   const handleSendMessage = async () => {
     if (!input.trim()) {
       messageApi.error("不能发送空消息");
@@ -366,44 +373,12 @@ const ChatPage = () => {
         body: JSON.stringify({
           conversationId: selectedConversationId,
           content: input.trim(),
-          reply_to: replyToMessage?.id // 修改 reply_to_id 为 reply_to
+          reply_to: replyToMessage?.id 
         }),
       });
 
       const res = await response.json();
       if (res.code === 0) {
-        // // 消息发送成功，添加到本地消息列表
-        // const currentTime = new Date().toISOString();
-        // const newMessage = { 
-        //   id: res.id || Date.now().toString(), // 使用响应中的id或临时id
-        //   content: input.trim(), 
-        //   sender: "me", 
-        //   senderid: userInfo?.id,
-        //   sendername: userInfo?.name,
-        //   senderavatar: userInfo?.avatar,
-        //   created_time: currentTime,
-        //   conversation: selectedConversationId,
-        //   reply_to: replyToMessage?.content,
-        //   reply_to_id: replyToMessage?.id
-        // };
-
-        // setMessages((prevMessages) => ({
-        //   ...prevMessages,
-        //   [selectedConversationId]: [...(prevMessages[selectedConversationId] || []), newMessage],
-        // }));
-        
-        // // 更新会话列表中的最后一条消息
-        // setConversations(conversations.map(conv => {
-        //   if (conv.id === selectedConversationId) {
-        //     return {
-        //       ...conv,
-        //       last_message: input.trim(),
-        //       last_message_time: currentTime
-        //     };
-        //   }
-        //   return conv;
-        // }));
-        
         // 发送消息之后notify会发送websocket消息，因此不需要前端更新
         setInput("");
         setReplyToMessage(undefined); // 清除回复状态
@@ -421,9 +396,11 @@ const ChatPage = () => {
     }
   };
 
+// 修改会话点击处理函数
   const handleConversationClick = (conversationId: string) => {
     setSelectedConversationId(conversationId);
-    fetchMessages(conversationId);
+setIsFirstLoad(true); // 重置为首次加载状态
+    fetchMessages(conversationId, undefined, true); // 明确指示需要滚动
   };
 
   const handleIconClick = (iconName: string) => {
@@ -870,40 +847,43 @@ const ChatPage = () => {
             </Header>
           )}
 
-          {/*TODO: 需重新布局，显示messages最下面的消息，向上滚动可以查看messages上面的消息(初始默认滚轮在最下面)*/}
           {/* 聊天内容区域 */}
           <Content 
+            key = {selectedConversationId}
             style={{ 
               padding: "24px", 
               background: "#fff", 
-              overflowY: "auto", 
-              display: 'flex', 
-              flexDirection: 'column',
               backgroundImage: 'linear-gradient(135deg, rgba(246, 246, 255, 0.4) 25%, rgba(236, 236, 255, 0.4) 25%, rgba(236, 236, 255, 0.4) 50%, rgba(246, 246, 255, 0.4) 50%, rgba(246, 246, 255, 0.4) 75%, rgba(236, 236, 255, 0.4) 75%, rgba(236, 236, 255, 0.4) 100%)',
-              backgroundSize: '40px 40px'
+              backgroundSize: '40px 40px',
+              height: 'calc(100vh - 200px)', // 固定高度，减去header和输入框的高度
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+            ref={messagesContainerRef} // 绑定滚动容器的引用
+            onScroll={(e) => {
+              // 当用户滚动到顶部时，加载更多历史消息
+              const target = e.target as HTMLDivElement;
+              if (target.scrollTop === 0 && messages.length > 0) {
+                loadMoreMessages();
+              }
             }}
           >
-            {selectedConversationId && messages?.length > 0 && (
-              <div style={{ textAlign: 'center', margin: '0 0 16px 0' }}>
-                <Button 
-                  type="link" 
-                  onClick={loadMoreMessages}
-                  style={{ color: '#8A2BE2', fontSize: '13px' }}
-                >
-                  加载更多消息
-                </Button>
-              </div>
-            )}
-            
             {selectedConversationId ? (
               messages?.length > 0 ? (
-                <>
-                  {messages?.map((msg) => (
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  justifyContent: messages.length < 10 ? 'flex-start' : 'flex-end', // 当消息少时，靠上显示
+                  //minHeight: '100%',
+                }}>
+                  {messages.map((msg) => (
                     <div key={msg.id} style={{ 
                       display: "flex", 
-                      justifyContent: msg.sender === "me" ? "flex-end" : "flex-start", 
+                      justifyContent: msg.sender === "me" ? "flex-end" : "flex-start", // 确保自己的消息在右侧
                       marginBottom: "24px"
                     }}>
+                      {/* 如果不是自己的消息，在左侧显示头像 */}
                       {msg.sender !== "me" && (
                         <Avatar 
                           src={msg.senderavatar} 
@@ -914,7 +894,7 @@ const ChatPage = () => {
                         style={{ 
                           position: 'relative',
                           maxWidth: "60%", 
-                          padding: "12px 16px", 
+                          padding: msg.type === 0 ? "12px 16px" : "8px", 
                           borderRadius: msg.sender === "me" 
                             ? "18px 18px 0 18px" 
                             : "0 18px 18px 18px", 
@@ -926,38 +906,41 @@ const ChatPage = () => {
                             : "0 2px 10px rgba(0, 0, 0, 0.08)",
                           border: msg.sender === "me"
                             ? "none"
-                            : "1px solid rgba(0, 0, 0, 0.05)",
-                          cursor: "pointer"
+                            : "1px solid rgba(0, 0, 0, 0.05)"
                         }}
-                        // onClick={() => handleReplyMessage(msg)} // TODO(回复消息暂无需处理): 回复消息（右键或者鼠标悬浮，显示菜单栏，可以查看回复列表以及回复该消息）
                       >
-                        {/* 如果是回复消息，显示引用部分
-                        {msg.reply_to && (
-                          <div style={{
-                            padding: '8px 12px',
-                            borderRadius: '8px',
-                            backgroundColor: msg.sender === "me" ? 'rgba(255, 255, 255, 0.2)' : 'rgba(138, 43, 226, 0.1)',
-                            marginBottom: '8px',
-                            fontSize: '13px',
-                            color: msg.sender === "me" ? 'rgba(255, 255, 255, 0.8)' : '#666',
-                            position: 'relative',
-                            borderLeft: `3px solid ${msg.sender === "me" ? 'rgba(255, 255, 255, 0.5)' : '#8A2BE2'}`
-                          }}>
-                            <Text ellipsis style={{ 
+                        {/* 根据消息类型显示不同内容 */}
+                        {msg.type === 0 ? (
+                          // 文本消息
+                          <p style={{ 
+                            margin: 0, 
+                            color: msg.sender === "me" ? "white" : "#333",
+                            fontSize: '15px',
+                            lineHeight: '1.5',
+                            wordBreak: 'break-word'
+                          }}>{msg.content}</p>
+                        ) : msg.type === 1 ? (
+                          // 图片消息
+                          <img 
+                            src={msg.content} 
+                            alt="图片消息" 
+                            style={{ 
                               maxWidth: '100%', 
-                              color: msg.sender === "me" ? 'rgba(255, 255, 255, 0.8)' : '#666' 
-                            }}>
-                              {msg.reply_to}
-                            </Text>
-                          </div>
-                        )} */}
-                        
-                        <p style={{ 
-                          margin: 0, 
-                          color: msg.sender === "me" ? "white" : "#333",
-                          fontSize: '15px',
-                          lineHeight: '1.5'
-                        }}>{msg.content}</p>
+                              borderRadius: '8px',
+                              cursor: 'pointer'
+                            }} 
+                            onClick={() => window.open(msg.content, '_blank')}
+                          />
+                        ) : (
+                          // 其他类型消息
+                          <p style={{ 
+                            margin: 0, 
+                            color: msg.sender === "me" ? "white" : "#333",
+                            fontSize: '15px',
+                            lineHeight: '1.5'
+                          }}>未知消息类型</p>
+                        )}
+
                         <div style={{ 
                           display: 'flex',
                           justifyContent: 'flex-end',
@@ -972,9 +955,10 @@ const ChatPage = () => {
                           <Text style={{ 
                             fontSize: "11px", 
                             color: msg.sender === "me" ? "rgba(255,255,255,0.7)" : "#999",
-                          }}>{msg.created_time}</Text>
+                          }}>{formatTime(msg.created_time)}</Text>
                         </div>
                       </div>
+                      {/* 如果是自己的消息，在右侧显示头像 */}
                       {msg.sender === "me" && (
                         <Avatar 
                           src={userInfo?.avatar} 
@@ -983,9 +967,7 @@ const ChatPage = () => {
                       )}
                     </div>
                   ))}
-                  <div ref={messagesEndRef} />
-                  {/* TODO: 这个messagesEndRef对吗？ */}
-                </>
+                </div>
               ) : (
                 <div style={{ 
                   flex: 1, 
