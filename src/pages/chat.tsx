@@ -221,7 +221,7 @@ const ChatPage = () => {
   const fetchMessages = async (conversationId: number, fromTime?: string, shouldScroll: boolean = true) => {
     try {
       // 构建请求URL，支持从特定时间开始获取消息
-      let url = `/api/conversations/messages?conversationId=${conversationId}`;
+      const url = `/api/conversations/messages?conversationId=${conversationId}`;
       // if (fromTime) {
       //   url += `&from=${fromTime}`;
       // }
