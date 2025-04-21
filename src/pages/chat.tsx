@@ -42,6 +42,15 @@ interface Message {
   created_time: string;
 }
 
+interface MessageReply {
+  reply_id: number;
+  sender_id: number;
+  sender_name: string;
+  sender_avatar: string;
+  content: string;
+  timestamp: string;
+}
+
 const ChatPage = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const [search, setSearch] = useState("");
@@ -69,23 +78,80 @@ const ChatPage = () => {
 
   // 添加回复相关状态及功能
   const [replyToMessage, setReplyToMessage] = useState<Message | undefined>(undefined);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | undefined>(undefined);
+  const [rightClickedMessage, setRightClickedMessage] = useState<Message | undefined>(undefined);
 
   // 添加标记初次加载的状态
   const [isFirstLoad, setIsFirstLoad] = useState<boolean>(true);
 
-  // 修改加载更多消息的函数
-  // const loadMoreMessages = () => {
-  //   if (!selectedConversationId || !messages?.length) {
-  //     return;
-  //   }
-    
-  //   // 获取当前消息列表中最早消息的时间
-  //   const earliestMessage = messages[0];
-  //   const fromTime = earliestMessage.created_time;
-    
-  //   // 调用fetchMessages加载更早的消息，明确指定不是首次加载
-  //   fetchMessages(selectedConversationId, fromTime, false);
-  // };
+    // 在Chat组件中添加新的状态来跟踪高亮的消息
+  const [highlightedMessageId, setHighlightedMessageId] = useState<number | undefined>(undefined);
+
+  // 为每个消息添加ref，以便能够滚动到指定消息
+  const messageRefs = useRef<{ [key: number]: HTMLDivElement }>({} as { [key: number]: HTMLDivElement });
+  
+  // 添加回复列表相关状态
+const [showReplyList, setShowReplyList] = useState(false);
+const [replyListMessageId, setReplyListMessageId] = useState<number | undefined>(undefined);
+const [replyListLoading, setReplyListLoading] = useState(false);
+const [replyList, setReplyList] = useState<MessageReply[]>([]);
+
+  // 添加滚动到指定消息的函数
+  const scrollToMessage = (messageId: number) => {
+    if (messageRefs.current[messageId]) {
+      messageRefs.current[messageId]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+      
+      // 设置高亮，然后在一段时间后取消高亮
+      setHighlightedMessageId(messageId);
+      setTimeout(() => {
+        setHighlightedMessageId(undefined);
+      }, 2000); // 2秒后取消高亮
+    }
+  };
+
+  // 处理点击回复预览
+  const handleReplyPreviewClick = () => {
+    if (replyToMessage?.id) {
+      scrollToMessage(replyToMessage.id);
+    }
+  };
+
+  //取消回复函数
+  const cancelReply = () => {
+    setReplyToMessage(undefined);
+  }
+
+  //处理消息右键点击
+  const handleMessageRightClick = (event: React.MouseEvent, message: Message) => {
+    event.preventDefault(); // 阻止默认右键菜单
+    setContextMenuPosition({ x: event.clientX, y: event.clientY });
+    setRightClickedMessage(message);
+  }
+
+  //处理菜单项点击
+  const handleMenuClick = (action: string) => {
+    if (action === "reply") {
+      setReplyToMessage(rightClickedMessage);
+    }
+    else if(action === "viewOriginal" && rightClickedMessage?.reply_to_id) {
+    // 跳转到原始消息
+      scrollToMessage(rightClickedMessage.reply_to_id);
+    }
+    else if (action === "viewReplies" && rightClickedMessage?.id) {
+      fetchReplyList(rightClickedMessage.id);
+    }
+    setContextMenuPosition(undefined); // 关闭菜单
+  }
+
+  // 处理点击文档关闭上下文菜单
+  useEffect(() => {
+    const handleClickOutside = () => setContextMenuPosition(undefined);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   const messagesContainerRef = useRef<HTMLDivElement>({
     scrollIntoView: () => {}, // 添加一个空的 scrollIntoView 方法
@@ -97,14 +163,6 @@ const ChatPage = () => {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   };
-
-  // 只在初次选择会话时滚动到底部
-  // useEffect(() => {
-  //   if (selectedConversationId && isFirstLoad) {
-  //     scrollToBottom();
-  //     setIsFirstLoad(false);
-  //   }
-  // }, [selectedConversationId, isFirstLoad]);
 
   // 从 Cookie 中获取 JWT Token
   const token = Cookies.get("jwtToken");
@@ -251,19 +309,6 @@ const ChatPage = () => {
           conversation: msg.conversation
         }));
         
-        // // 如果是加载更多消息，则将新消息添加到现有消息之前
-        // if (fromTime) {
-        //   setMessages(prev => ({
-        //     ...prev,
-        //     [conversationId]: [...formattedMessages, ...(prev[conversationId] || [])]
-        //   }));
-        // } else {
-        //   // 如果是初次加载，直接替换现有消息列表
-        //   setMessages(prev => ({
-        //     ...prev,
-        //     [conversationId]: formattedMessages
-        //   }));
-        // }
         setMessages(formattedMessages);
 
         // 仅在应该滚动且消息非空的情况下滚动到底部
@@ -380,7 +425,7 @@ const ChatPage = () => {
       if (res.code === 0) {
         // 发送消息之后notify会发送websocket消息，因此不需要前端更新
         setInput("");
-        // setReplyToMessage(undefined); // 清除回复状态
+        setReplyToMessage(undefined); // 清除回复状态
       } else if (res.code === -2) {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
@@ -395,6 +440,38 @@ const ChatPage = () => {
     }
   };
 
+  const fetchReplyList = async (messageId: number) => {
+  setReplyListLoading(true);
+  try {
+    const response = await fetch(`/api/conversations/get_reply?message_id=${messageId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `${token}`
+      }
+    });
+
+    const res = await response.json();
+    if (res.code === 0) {
+      setReplyList(res.replies);
+      setShowReplyList(true);
+      setReplyListMessageId(messageId);
+    } else if (res.code === -2) {
+      Cookies.remove("jwtToken");
+      Cookies.remove("userEmail");
+      messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
+        router.push("/");
+      });
+    } else {
+      messageApi.error(res.info || "获取回复列表失败");
+    }
+  } catch (error) {
+    messageApi.error("网络错误，请稍后重试");
+  } finally {
+    setReplyListLoading(false);
+  }
+  };
+  
   useEffect(() => {
     if (selectedConversationId) {
       setIsFirstLoad(true); // 重置为首次加载状态
@@ -424,19 +501,6 @@ const ChatPage = () => {
   const handleAvatarClick = () => {
     setIsDrawerVisible(true);
   };
-
-  // TODO(回复消息暂无需处理): 聚焦输入框是什么？？？？
-  // 处理回复消息的函数
-  // const handleReplyMessage = (message: Message) => {
-  //   setReplyToMessage(message);
-  //   // 聚焦输入框
-  //   document.querySelector('textarea')?.focus();
-  // };
-
-  // // 取消回复
-  // const cancelReply = () => {
-  //   setReplyToMessage(undefined);
-  // };
 
   // 格式化时间显示
   const formatTime = (timeString: string) => {
@@ -865,13 +929,6 @@ const ChatPage = () => {
               flexDirection: 'column',
             }}
             ref={messagesContainerRef} // 绑定滚动容器的引用
-            // onScroll={(e) => {
-            //   // 当用户滚动到顶部时，加载更多历史消息
-            //   const target = e.target as HTMLDivElement;
-            //   if (target.scrollTop === 0 && messages.length > 0) {
-            //     loadMoreMessages();
-            //   }
-            // }}
           >
             {selectedConversationId ? (
               messages?.length > 0 ? (
@@ -879,13 +936,24 @@ const ChatPage = () => {
                   display: 'flex', 
                   flexDirection: 'column',
                   justifyContent: messages.length < 10 ? 'flex-start' : 'flex-end', // 当消息少时，靠上显示
-                  //minHeight: '100%',
                 }}>
                   {messages.map((msg) => (
-                    <div key={msg.id} style={{ 
+                    <div
+                      key={msg.id}
+                      ref={(el) => {
+                        if (el) {
+                          messageRefs.current[msg.id] = el;
+                        }
+                      }} // 绑定每个消息的引用
+                      style={{ 
                       display: "flex", 
                       justifyContent: msg.sender === "me" ? "flex-end" : "flex-start", // 确保自己的消息在右侧
-                      marginBottom: "24px"
+                      marginBottom: "24px",
+                      // 添加高亮效果
+                      padding: highlightedMessageId === msg.id ? "8px" : "0px",
+                      borderRadius: highlightedMessageId === msg.id ? "8px" : "0px",
+                      backgroundColor: highlightedMessageId === msg.id ? "rgba(138, 43, 226, 0.1)" : "transparent",
+                      transition: "all 0.3s ease"
                     }}>
                       {/* 如果不是自己的消息，在左侧显示头像 */}
                       {msg.sender !== "me" && (
@@ -910,9 +978,34 @@ const ChatPage = () => {
                             : "0 2px 10px rgba(0, 0, 0, 0.08)",
                           border: msg.sender === "me"
                             ? "none"
-                            : "1px solid rgba(0, 0, 0, 0.05)"
+                            : "1px solid rgba(0, 0, 0, 0.05)",
+                          cursor: "context-menu"
                         }}
+                        onContextMenu={(e) => handleMessageRightClick(e, msg)}
                       >
+                        {/* 如果有回复，显示回复的原消息 */}
+                        {msg.reply_to_id && (
+                          <div style={{
+                            padding: '8px',
+                            marginBottom: '8px',
+                            borderRadius: '8px',
+                            backgroundColor: msg.sender === "me" ? 'rgba(255, 255, 255, 0.2)' : 'rgba(138, 43, 226, 0.08)',
+                            borderLeft: msg.sender === "me" ? '3px solid rgba(255, 255, 255, 0.5)' : '3px solid #8A2BE2',
+                            fontSize: '13px',
+                            color: msg.sender === "me" ? 'rgba(255, 255, 255, 0.9)' : '#666'
+                          }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>
+                              {messages.find(m => m.id === msg.reply_to_id)?.sendername || "回复消息"}
+                            </div>
+                            <div style={{ 
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {messages.find(m => m.id === msg.reply_to_id)?.content || msg.reply_to || "原消息不可用"}
+                            </div>
+                          </div>
+                        )}
                         {/* 根据消息类型显示不同内容 */}
                         {msg.type === 0 ? (
                           // 文本消息
@@ -1004,6 +1097,89 @@ const ChatPage = () => {
                 </Text>
               </div>
             )}
+
+            {/* 右键菜单 */}
+              {contextMenuPosition && (
+                <div style={{
+                  position: 'fixed',
+                  left: contextMenuPosition.x,
+                  top: contextMenuPosition.y,
+                  backgroundColor: 'white',
+                  boxShadow: '0 2px 10px rgba(0, 0, 0, 0.15)',
+                  borderRadius: '8px',
+                  padding: '4px 0',
+                  zIndex: 1000,
+                  minWidth: '120px'
+                }}>
+                  <div 
+                    onClick={() => handleMenuClick('reply')}
+                    style={{
+                      padding: '8px 16px',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s',
+                      fontSize: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(138, 43, 226, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <MessageOutlined style={{ fontSize: '14px', color: '#8A2BE2' }} />
+                    回复
+                </div>
+                {/* 添加查看回复列表选项 */}
+                <div 
+                  onClick={() => handleMenuClick('viewReplies')}
+                  style={{
+                    padding: '8px 16px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(138, 43, 226, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <TeamOutlined style={{ fontSize: '14px', color: '#8A2BE2' }} />
+                  查看回复列表
+                </div>
+                {/* 添加查看原消息选项，当消息有回复时才显示 */}
+                {rightClickedMessage?.reply_to_id && (
+                  <div 
+                    onClick={() => handleMenuClick('viewOriginal')}
+                    style={{
+                      padding: '8px 16px',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s',
+                      fontSize: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(138, 43, 226, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <SearchOutlined style={{ fontSize: '14px', color: '#8A2BE2' }} />
+                    定位到原文位置
+                  </div>
+                )}
+                </div>
+              )}            
           </Content>
 
           {/* 消息输入区域 */}
@@ -1016,7 +1192,7 @@ const ChatPage = () => {
               flexDirection: "column",
               gap: "12px"
             }}>
-              {/* 回复消息预览
+              {/* 回复消息预览*/}
               {replyToMessage && (
                 <div style={{
                   display: 'flex',
@@ -1025,8 +1201,19 @@ const ChatPage = () => {
                   padding: '8px 12px',
                   backgroundColor: 'rgba(138, 43, 226, 0.08)',
                   borderRadius: '8px',
-                  borderLeft: '3px solid #8A2BE2'
-                }}>
+                  borderLeft: '3px solid #8A2BE2',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  position: 'relative'//为提示添加定位上下文
+                }}
+                onClick={handleReplyPreviewClick}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(138, 43, 226, 0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(138, 43, 226, 0.08)';
+                }}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div style={{ fontSize: '13px', color: '#666' }}>
                       回复 <span style={{ color: '#8A2BE2', fontWeight: 'bold' }}>{replyToMessage.sendername}</span>
@@ -1035,16 +1222,21 @@ const ChatPage = () => {
                       {replyToMessage.content}
                     </div>
                   </div>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <small style={{ color: '#999', fontSize: '12px', marginRight: '8px' }}>点击跳转到原文位置</small>
                   <Button 
                     type="text" 
                     size="small" 
                     icon={<CloseOutlined />} 
-                    onClick={cancelReply}
+                    onClick={(e) => {
+                      e.stopPropagation(); // 阻止事件冒泡，避免触发父元素的点击事件
+                      cancelReply();
+                    }}
                     style={{ color: '#999' }}
                   />
+                  </div>
                 </div>
-              )} */}
-              
+              )} 
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px' }}>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {/* TODO(暂无需考虑): 额外信息===================================================================== */}
@@ -1181,6 +1373,108 @@ const ChatPage = () => {
           websocket={groupDrawerWebsocket}
           setWebsocket={setGroupDrawerWebsocket}
         />
+
+        {/* 回复列表弹窗 */}
+        {showReplyList && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1010,
+          }}>
+            <div style={{
+              width: '500px',
+              maxHeight: '80vh',
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
+            }}>
+              {/* 弹窗标题 */}
+              <div style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid #f0f0f0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: 'rgba(138, 43, 226, 0.03)'
+              }}>
+                <Text strong style={{ fontSize: '16px', color: '#8A2BE2' }}>
+                  回复列表
+                </Text>
+                <Button 
+                  type="text" 
+                  icon={<CloseOutlined />} 
+                  onClick={() => {
+                    setShowReplyList(false);
+                    setReplyListMessageId(undefined);
+                    setReplyList([]);
+                  }} 
+                />
+              </div>
+              
+              {/* 回复列表内容 */}
+              <div style={{
+                padding: '0',
+                overflowY: 'auto',
+                flex: 1,
+                maxHeight: 'calc(80vh - 70px)'
+              }}>
+                {replyListLoading ? (
+                  <div style={{ padding: '40px 0', display: 'flex', justifyContent: 'center' }}>
+                    <Spin />
+                  </div>
+                ) : replyList.length === 0 ? (
+                  <Empty 
+                    description="暂无回复" 
+                    style={{ margin: '40px 0' }} 
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  />
+                ) : (
+                  <List
+                    dataSource={replyList}
+                    renderItem={item => (
+                      <List.Item style={{
+                        padding: '16px 20px',
+                        borderBottom: '1px solid #f0f0f0'
+                      }}>
+                        <List.Item.Meta
+                          avatar={<Avatar src={item.sender_avatar} />}
+                          title={
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Text strong>{item.sender_name}</Text>
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                {formatTime(item.timestamp)}
+                              </Text>
+                            </div>
+                          }
+                          description={
+                            <div style={{
+                              marginTop: '8px',
+                              padding: '12px',
+                              backgroundColor: '#f9f9f9',
+                              borderRadius: '8px'
+                            }}>
+                              {item.content}
+                            </div>
+                          }
+                        />
+                      </List.Item>
+                    )}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </Layout>
     </>
   );
