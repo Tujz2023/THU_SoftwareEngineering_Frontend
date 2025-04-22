@@ -18,6 +18,7 @@ interface FriendsListDrawerProps {
   unhandleRequests: number;
   websocket: boolean;
   setWebsocket: Dispatch<SetStateAction<boolean>>;
+  gotoConversation: (friendId: number) => void;
 }
 
 const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({ 
@@ -27,7 +28,8 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
   friendRequests, 
   unhandleRequests, 
   websocket, 
-  setWebsocket 
+  setWebsocket,
+  gotoConversation,
 }) => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [filteredFriends, setFilteredFriends] = useState<Friend[]>([]);
@@ -300,6 +302,18 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
     onClose();
   };
 
+  const handleGotoConversation = (friend: Friend | undefined) => {
+    if (friend == undefined) {
+      messageApi.error('请选择一个好友')
+    }
+    else {
+      setSelectedFriend(undefined);
+      setIsFriendModalVisible(false);
+      handleFriendListDrawerClose();
+      gotoConversation(friend.id);
+    }
+  }
+
   const getStatusBadge = (status: number) => {
     const statusConfig: { [key: number]: { text: string; color: string; icon: React.ReactNode } } = {
       0: { text: "等待处理", color: "#faad14", icon: <ClockCircleOutlined /> },
@@ -543,18 +557,6 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
                       </div>
                     }
                   />
-                  {! friend.deleted && (<Button
-                    type="text"
-                    icon={<MessageOutlined style={{ color: friend.deleted ? '#999' : '#8A2BE2' }} />}
-                    style={{ marginLeft: '8px' }}
-                    disabled={friend.deleted}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!friend.deleted) {
-                        messageApi.info("消息功能开发中...");
-                      }
-                    }}
-                  />)}
                 </List.Item>
               )}
             />
@@ -744,13 +746,13 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
           </div>
         }
         open={isFriendModalVisible}
-        onCancel={() => setIsFriendModalVisible(false)}
+        onCancel={() => {setIsFriendModalVisible(false); setSelectedFriend(undefined);}}
         footer={[
           <Button
             key="conversation"
             type="primary"
             icon={<MessageOutlined />}
-            onClick={() => messageApi.info("该功能仍在开发中...")}
+            onClick={() => handleGotoConversation(selectedFriend)}
             style={{ 
               borderRadius: '6px', 
               backgroundColor: '#8A2BE2', 

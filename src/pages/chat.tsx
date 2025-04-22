@@ -69,6 +69,7 @@ const ChatPage = () => {
   const [unhandleRequests, setUnhandleRequests] = useState(0);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState(false);
   const [isChatInfoVisible, setIsChatInfoVisible] = useState(false);
   const [isCreateCovModalVisible, setIsCreateCovModalVisible] = useState(false);  // 添加创建群聊模态框的状态
 
@@ -314,6 +315,7 @@ const ChatPage = () => {
         // 仅在应该滚动且消息非空的情况下滚动到底部
         if (shouldScroll && formattedMessages.length > 0) {
           setTimeout(scrollToBottom, 100); // 稍微延迟确保 DOM 已更新
+          setLoadingMessage(false);
         }
         
         // 在成功获取消息后刷新会话列表，因为未读消息数会变化
@@ -348,7 +350,7 @@ const ChatPage = () => {
     } //删除需要的函数
     else if (param === 1) {
       if (selectedConversationId) {
-        fetchMessages(selectedConversationId);
+        fetchMessages(selectedConversationId, undefined, false);
       }
       else {
         fetchConversations();
@@ -475,14 +477,31 @@ const ChatPage = () => {
   useEffect(() => {
     if (selectedConversationId) {
       setIsFirstLoad(true); // 重置为首次加载状态
-      fetchMessages(selectedConversationId, undefined, true);
+      // fetchMessages(selectedConversationId, undefined, true);
+      setTimeout(() => {
+        fetchMessages(selectedConversationId, undefined, true); // true 表示需要自动滚动
+      }, 0);
     }
   }, [selectedConversationId]);
 
   // 修改会话点击处理函数
   const handleConversationClick = (conversationId: number) => {
+    if (conversationId === selectedConversationId) return ;
+    setLoadingMessage(true);
+    setMessages([]);
     setSelectedConversationId(conversationId);
   };
+
+  const fromFriendListToConversation = (friendId: number) => {
+    const matchingConversation = conversations.find(conv => conv.friend_id === friendId);
+    // 如果找到了匹配的会话，则调用 handleConversationClick 并传入会话的 id
+    if (matchingConversation) {
+      handleConversationClick(matchingConversation.id);
+    } else {
+      // 如果没有找到匹配的会话，可以在这里处理，例如显示错误消息或进行其他操作
+      messageApi.error('无法找到该会话');
+    }
+  }
 
   const handleIconClick = (iconName: string) => {
     if (iconName === "Settings") {
@@ -922,7 +941,7 @@ const ChatPage = () => {
 
           {/* 聊天内容区域 */}
           <Content 
-            key = {selectedConversationId}
+            // key = {selectedConversationId}
             style={{ 
               padding: "24px", 
               background: "#fff", 
@@ -936,156 +955,167 @@ const ChatPage = () => {
             ref={messagesContainerRef} // 绑定滚动容器的引用
           >
             {selectedConversationId ? (
-              messages?.length > 0 ? (
-                <div style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  justifyContent: messages.length < 10 ? 'flex-start' : 'flex-end', // 当消息少时，靠上显示
-                }}>
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      ref={(el) => {
-                        if (el) {
-                          messageRefs.current[msg.id] = el;
-                        }
-                      }} // 绑定每个消息的引用
-                      style={{ 
-                      display: "flex", 
-                      justifyContent: msg.sender === "me" ? "flex-end" : "flex-start", // 确保自己的消息在右侧
-                      marginBottom: "24px",
-                      // 添加高亮效果
-                      padding: highlightedMessageId === msg.id ? "8px" : "0px",
-                      borderRadius: highlightedMessageId === msg.id ? "8px" : "0px",
-                      backgroundColor: highlightedMessageId === msg.id ? "rgba(138, 43, 226, 0.1)" : "transparent",
-                      transition: "all 0.3s ease"
-                    }}>
-                      {/* 如果不是自己的消息，在左侧显示头像 */}
-                      {msg.sender !== "me" && (
-                        <Avatar 
-                          src={msg.senderavatar} 
-                          style={{ marginRight: '8px', alignSelf: 'flex-end' }}
-                        />
-                      )}
-                      <div 
-                        style={{ 
-                          position: 'relative',
-                          maxWidth: "60%", 
-                          padding: msg.type === 0 ? "12px 16px" : "8px", 
-                          borderRadius: msg.sender === "me" 
-                            ? "18px 18px 0 18px" 
-                            : "0 18px 18px 18px", 
-                          background: msg.sender === "me" 
-                            ? "linear-gradient(135deg, #9F4BDF, #8A2BE2)" 
-                            : "#fff",
-                          boxShadow: msg.sender === "me"
-                            ? "0 2px 10px rgba(138, 43, 226, 0.25)"
-                            : "0 2px 10px rgba(0, 0, 0, 0.08)",
-                          border: msg.sender === "me"
-                            ? "none"
-                            : "1px solid rgba(0, 0, 0, 0.05)",
-                          cursor: "context-menu"
-                        }}
-                        onContextMenu={(e) => handleMessageRightClick(e, msg)}
-                      >
-                        {/* 如果有回复，显示回复的原消息 */}
-                        {msg.reply_to_id && (
-                          <div style={{
-                            padding: '8px',
-                            marginBottom: '8px',
-                            borderRadius: '8px',
-                            backgroundColor: msg.sender === "me" ? 'rgba(255, 255, 255, 0.2)' : 'rgba(138, 43, 226, 0.08)',
-                            borderLeft: msg.sender === "me" ? '3px solid rgba(255, 255, 255, 0.5)' : '3px solid #8A2BE2',
-                            fontSize: '13px',
-                            color: msg.sender === "me" ? 'rgba(255, 255, 255, 0.9)' : '#666'
-                          }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>
-                              {messages.find(m => m.id === msg.reply_to_id)?.sendername || "回复消息"}
-                            </div>
-                            <div style={{ 
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}>
-                              {messages.find(m => m.id === msg.reply_to_id)?.content || msg.reply_to || "原消息不可用"}
-                            </div>
-                          </div>
-                        )}
-                        {/* 根据消息类型显示不同内容 */}
-                        {msg.type === 0 ? (
-                          // 文本消息
-                          <p style={{ 
-                            margin: 0, 
-                            color: msg.sender === "me" ? "white" : "#333",
-                            fontSize: '15px',
-                            lineHeight: '1.5',
-                            wordBreak: 'break-word'
-                          }}>{msg.content}</p>
-                        ) : msg.type === 1 ? (
-                          // 图片消息
-                          <img 
-                            src={msg.content} 
-                            alt="图片消息" 
-                            style={{ 
-                              maxWidth: '100%', 
-                              borderRadius: '8px',
-                              cursor: 'pointer'
-                            }} 
-                            onClick={() => window.open(msg.content, '_blank')}
-                          />
-                        ) : (
-                          // 其他类型消息
-                          <p style={{ 
-                            margin: 0, 
-                            color: msg.sender === "me" ? "white" : "#333",
-                            fontSize: '15px',
-                            lineHeight: '1.5'
-                          }}>未知消息类型</p>
-                        )}
-
-                        <div style={{ 
-                          display: 'flex',
-                          justifyContent: 'flex-end',
-                          marginTop: '4px',
-                          gap: '4px',
-                          alignItems: 'center'
-                        }}>
-                          <ClockCircleOutlined style={{ 
-                            fontSize: '10px', 
-                            color: msg.sender === "me" ? "rgba(255,255,255,0.7)" : "#999" 
-                          }} />
-                          <Text style={{ 
-                            fontSize: "11px", 
-                            color: msg.sender === "me" ? "rgba(255,255,255,0.7)" : "#999",
-                          }}>{formatTime(msg.created_time)}</Text>
-                        </div>
-                      </div>
-                      {/* 如果是自己的消息，在右侧显示头像 */}
-                      {msg.sender === "me" && (
-                        <Avatar 
-                          src={userInfo?.avatar} 
-                          style={{ marginLeft: '8px', alignSelf: 'flex-end' }}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
+              loadingMessage ? (
                 <div style={{ 
                   flex: 1, 
                   display: 'flex', 
-                  flexDirection: 'column',
                   justifyContent: 'center', 
                   alignItems: 'center',
-                  color: '#999',
                   height: '100%'
                 }}>
-                  <Empty 
-                    description="暂无消息，开始聊天吧！" 
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  />
+                  <Spin tip="正在加载消息..." size="large" />
                 </div>
-              )
+              ) : (
+                messages?.length > 0 ? (
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    justifyContent: messages.length < 10 ? 'flex-start' : 'flex-end', // 当消息少时，靠上显示
+                  }}>
+                    {messages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        ref={(el) => {
+                          if (el) {
+                            messageRefs.current[msg.id] = el;
+                          }
+                        }} // 绑定每个消息的引用
+                        style={{ 
+                        display: "flex", 
+                        justifyContent: msg.sender === "me" ? "flex-end" : "flex-start", // 确保自己的消息在右侧
+                        marginBottom: "24px",
+                        // 添加高亮效果
+                        padding: highlightedMessageId === msg.id ? "8px" : "0px",
+                        borderRadius: highlightedMessageId === msg.id ? "8px" : "0px",
+                        backgroundColor: highlightedMessageId === msg.id ? "rgba(138, 43, 226, 0.1)" : "transparent",
+                        transition: "all 0.3s ease"
+                      }}>
+                        {/* 如果不是自己的消息，在左侧显示头像 */}
+                        {msg.sender !== "me" && (
+                          <Avatar 
+                            src={msg.senderavatar} 
+                            style={{ marginRight: '8px', alignSelf: 'flex-end' }}
+                          />
+                        )}
+                        <div 
+                          style={{ 
+                            position: 'relative',
+                            maxWidth: "60%", 
+                            padding: msg.type === 0 ? "12px 16px" : "8px", 
+                            borderRadius: msg.sender === "me" 
+                              ? "18px 18px 0 18px" 
+                              : "0 18px 18px 18px", 
+                            background: msg.sender === "me" 
+                              ? "linear-gradient(135deg, #9F4BDF, #8A2BE2)" 
+                              : "#fff",
+                            boxShadow: msg.sender === "me"
+                              ? "0 2px 10px rgba(138, 43, 226, 0.25)"
+                              : "0 2px 10px rgba(0, 0, 0, 0.08)",
+                            border: msg.sender === "me"
+                              ? "none"
+                              : "1px solid rgba(0, 0, 0, 0.05)",
+                            cursor: "context-menu"
+                          }}
+                          onContextMenu={(e) => handleMessageRightClick(e, msg)}
+                        >
+                          {/* 如果有回复，显示回复的原消息 */}
+                          {msg.reply_to_id && (
+                            <div style={{
+                              padding: '8px',
+                              marginBottom: '8px',
+                              borderRadius: '8px',
+                              backgroundColor: msg.sender === "me" ? 'rgba(255, 255, 255, 0.2)' : 'rgba(138, 43, 226, 0.08)',
+                              borderLeft: msg.sender === "me" ? '3px solid rgba(255, 255, 255, 0.5)' : '3px solid #8A2BE2',
+                              fontSize: '13px',
+                              color: msg.sender === "me" ? 'rgba(255, 255, 255, 0.9)' : '#666'
+                            }}>
+                              <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>
+                                {messages.find(m => m.id === msg.reply_to_id)?.sendername || "回复消息"}
+                              </div>
+                              <div style={{ 
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {messages.find(m => m.id === msg.reply_to_id)?.content || msg.reply_to || "原消息不可用"}
+                              </div>
+                            </div>
+                          )}
+                          {/* 根据消息类型显示不同内容 */}
+                          {msg.type === 0 ? (
+                            // 文本消息
+                            <p style={{ 
+                              margin: 0, 
+                              color: msg.sender === "me" ? "white" : "#333",
+                              fontSize: '15px',
+                              lineHeight: '1.5',
+                              wordBreak: 'break-word'
+                            }}>{msg.content}</p>
+                          ) : msg.type === 1 ? (
+                            // 图片消息
+                            <img 
+                              src={msg.content} 
+                              alt="图片消息" 
+                              style={{ 
+                                maxWidth: '100%', 
+                                borderRadius: '8px',
+                                cursor: 'pointer'
+                              }} 
+                              onClick={() => window.open(msg.content, '_blank')}
+                            />
+                          ) : (
+                            // 其他类型消息
+                            <p style={{ 
+                              margin: 0, 
+                              color: msg.sender === "me" ? "white" : "#333",
+                              fontSize: '15px',
+                              lineHeight: '1.5'
+                            }}>未知消息类型</p>
+                          )}
+
+                          <div style={{ 
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            marginTop: '4px',
+                            gap: '4px',
+                            alignItems: 'center'
+                          }}>
+                            <ClockCircleOutlined style={{ 
+                              fontSize: '10px', 
+                              color: msg.sender === "me" ? "rgba(255,255,255,0.7)" : "#999" 
+                            }} />
+                            <Text style={{ 
+                              fontSize: "11px", 
+                              color: msg.sender === "me" ? "rgba(255,255,255,0.7)" : "#999",
+                            }}>{formatTime(msg.created_time)}</Text>
+                          </div>
+                        </div>
+                        {/* 如果是自己的消息，在右侧显示头像 */}
+                        {msg.sender === "me" && (
+                          <Avatar 
+                            src={userInfo?.avatar} 
+                            style={{ marginLeft: '8px', alignSelf: 'flex-end' }}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ 
+                    flex: 1, 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    justifyContent: 'center', 
+                    alignItems: 'center',
+                    color: '#999',
+                    height: '100%'
+                  }}>
+                    <Empty 
+                      description="暂无消息，开始聊天吧！" 
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    />
+                  </div>
+                ))
             ) : (
               <div style={{ 
                 flex: 1, 
@@ -1369,6 +1399,7 @@ const ChatPage = () => {
           unhandleRequests={unhandleRequests}
           websocket={friendListDrwaerWebsocket}
           setWebsocket={setFriendListDrwaerWebsocket}
+          gotoConversation={fromFriendListToConversation}
         />
 
         {/* 分组管理抽屉 */}

@@ -145,8 +145,8 @@ const RegisterPage = () => {
       .then((res) => {
         if (Number(res.code) === 0) {
           // 注册成功后将 JWT Token 存储到 Cookie 中
-          Cookies.set('jwtToken', res.token, { expires: 3 });
-          Cookies.set('userEmail', userEmail, { expires: 3 });
+          Cookies.set('jwtToken', res.token, { expires: 1 });
+          Cookies.set('userEmail', userEmail, { expires: 1 });
           messageApi.open({
             type: 'success',
             content: "注册成功，自动登录中..."
