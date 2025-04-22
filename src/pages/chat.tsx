@@ -48,7 +48,7 @@ interface MessageReply {
   sender_name: string;
   sender_avatar: string;
   content: string;
-  timestamp: string;
+  time: string;
 }
 
 const ChatPage = () => {
@@ -91,10 +91,10 @@ const ChatPage = () => {
   const messageRefs = useRef<{ [key: number]: HTMLDivElement }>({} as { [key: number]: HTMLDivElement });
   
   // 添加回复列表相关状态
-const [showReplyList, setShowReplyList] = useState(false);
-const [replyListMessageId, setReplyListMessageId] = useState<number | undefined>(undefined);
-const [replyListLoading, setReplyListLoading] = useState(false);
-const [replyList, setReplyList] = useState<MessageReply[]>([]);
+  const [showReplyList, setShowReplyList] = useState(false);
+  // const [replyListMessageId, setReplyListMessageId] = useState<number | undefined>(undefined);
+  const [replyListLoading, setReplyListLoading] = useState(false);
+  const [replyList, setReplyList] = useState<MessageReply[]>([]);
 
   // 添加滚动到指定消息的函数
   const scrollToMessage = (messageId: number) => {
@@ -441,35 +441,35 @@ const [replyList, setReplyList] = useState<MessageReply[]>([]);
   };
 
   const fetchReplyList = async (messageId: number) => {
-  setReplyListLoading(true);
-  try {
-    const response = await fetch(`/api/conversations/get_reply?message_id=${messageId}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `${token}`
-      }
-    });
-
-    const res = await response.json();
-    if (res.code === 0) {
-      setReplyList(res.replies);
-      setShowReplyList(true);
-      setReplyListMessageId(messageId);
-    } else if (res.code === -2) {
-      Cookies.remove("jwtToken");
-      Cookies.remove("userEmail");
-      messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
-        router.push("/");
+    setReplyListLoading(true);
+    try {
+      const response = await fetch(`/api/conversations/get_reply?message_id=${messageId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`
+        }
       });
-    } else {
-      messageApi.error(res.info || "获取回复列表失败");
+
+      const res = await response.json();
+      if (res.code === 0) {
+        setReplyList(res.replies);
+        setShowReplyList(true);
+        // setReplyListMessageId(messageId);
+      } else if (res.code === -2) {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
+          router.push("/");
+        });
+      } else {
+        messageApi.error(res.info || "获取回复列表失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    } finally {
+      setReplyListLoading(false);
     }
-  } catch (error) {
-    messageApi.error("网络错误，请稍后重试");
-  } finally {
-    setReplyListLoading(false);
-  }
   };
   
   useEffect(() => {
@@ -1415,7 +1415,7 @@ const [replyList, setReplyList] = useState<MessageReply[]>([]);
                   icon={<CloseOutlined />} 
                   onClick={() => {
                     setShowReplyList(false);
-                    setReplyListMessageId(undefined);
+                    // setReplyListMessageId(undefined);
                     setReplyList([]);
                   }} 
                 />
@@ -1452,7 +1452,7 @@ const [replyList, setReplyList] = useState<MessageReply[]>([]);
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <Text strong>{item.sender_name}</Text>
                               <Text type="secondary" style={{ fontSize: '12px' }}>
-                                {formatTime(item.timestamp)}
+                                {formatTime(item.time)}
                               </Text>
                             </div>
                           }

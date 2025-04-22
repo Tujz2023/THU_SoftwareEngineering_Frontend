@@ -41,6 +41,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
   const [isFriendListVisible, setIsFriendListVisible] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [groupListLoading, setGroupListLoading] = useState(false);
   const [membersLoading, setMembersLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
@@ -58,7 +59,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
   // 获取分组列表
   const fetchGroups = async () => {
     const token = Cookies.get("jwtToken");
-    setLoading(true);
+    setGroupListLoading(true);
 
     try {
       const response = await fetch("/api/groups", {
@@ -87,7 +88,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
     } catch (error) {
       messageApi.error("网络错误，请稍后重试");
     } finally {
-      setLoading(false);
+      setGroupListLoading(false);
     }
   };
 
@@ -102,7 +103,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
 
     const token = Cookies.get("jwtToken");
 
-    setLoading(true);
+    setGroupListLoading(true);
     try {
       const response = await fetch("/api/groups/manage_groups", {
         method: "PUT",
@@ -133,7 +134,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
     } catch (error) {
       messageApi.error("网络错误，请稍后重试");
     } finally {
-      setLoading(false);
+      setGroupListLoading(false);
     }
 
     setIsEditModalVisible(false);
@@ -150,7 +151,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
 
     const token = Cookies.get("jwtToken");
 
-    setLoading(true);
+    setGroupListLoading(true);
     try {
       const response = await fetch("/api/groups/manage_groups", {
         method: "DELETE",
@@ -183,7 +184,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
     } catch (error) {
       messageApi.error("网络错误，请稍后重试");
     } finally {
-      setLoading(false);
+      setGroupListLoading(false);
     }
     setIsDeleteModalVisible(false); // 关闭删除确认弹窗
     setGroupToDelete(0); // 清空待删除的分组 ID
@@ -247,7 +248,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
 
     const token = Cookies.get("jwtToken");
 
-    setLoading(true);
+    setGroupListLoading(true);
     try {
       const response = await fetch("/api/groups", {
         method: "POST",
@@ -279,7 +280,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
     } catch (error) {
       messageApi.error("网络错误，请稍后重试");
     } finally {
-      setLoading(false);
+      setGroupListLoading(false);
     }
   };
 
@@ -292,7 +293,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
 
     const token = Cookies.get("jwtToken");
 
-    setLoading(true);
+    setMembersLoading(true);
     try {
       const response = await fetch("/api/groups/members", {
         method: "DELETE",
@@ -323,7 +324,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
     } catch (error) {
       messageApi.error("网络错误，请稍后重试");
     } finally {
-      setLoading(false);
+      setMembersLoading(false);
       setIsDeleteMemberModalVisible(false); // 关闭删除确认弹窗
       setMemberToDelete(0); // 清空待删除的成员 ID
       setMemberToDeleteName("");
@@ -711,7 +712,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
               <Button 
                 type="primary" 
                 onClick={createGroup} 
-                loading={loading} 
+                loading={groupListLoading} 
                 icon={<PlusOutlined />}
                 block 
                 style={{ 
@@ -760,7 +761,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
             
             <Divider style={{ margin: '0 0 16px', borderColor: 'rgba(138, 43, 226, 0.1)' }} />
             
-            {loading ? (
+            {groupListLoading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
                 <Spin size="default" />
               </div>
