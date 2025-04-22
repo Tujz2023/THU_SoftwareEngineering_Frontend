@@ -9,7 +9,7 @@ import FriendsListDrawer from "../components/FriendsListDrawer";
 import GroupManagementDrawer from "../components/GroupManagementDrawer";
 import CreateCovModal from "../components/CreateCovModal";
 import { FriendRequest } from "../utils/types";
-
+import ChatInfoDrawer from "../components/ChatInfoDrawer";
 import { useMessageListener } from "../utils/websocket";
 const { Header, Sider, Content } = Layout;
 const { Text, Title } = Typography;
@@ -69,7 +69,7 @@ const ChatPage = () => {
   const [unhandleRequests, setUnhandleRequests] = useState(0);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-
+  const [isChatInfoVisible, setIsChatInfoVisible] = useState(false);
   const [isCreateCovModalVisible, setIsCreateCovModalVisible] = useState(false);  // 添加创建群聊模态框的状态
 
   const [friendListDrwaerWebsocket, setFriendListDrwaerWebsocket] = useState(false);
@@ -355,7 +355,7 @@ const ChatPage = () => {
       }
     }
     else {
-      alert("尚未实现...");
+      alert("websocket尚未实现...");
     }
   // }, []);
   }, [selectedConversationId, isFriendsDrawerVisible, isGroupDrawerVisible, isCreateCovModalVisible]);
@@ -892,8 +892,13 @@ const ChatPage = () => {
               </div>
               {/* TODO(暂无需考虑): 额外信息===================================================================== */}
               <div style={{ marginLeft: "auto" }}>
-                <Tooltip title="更多">
-                  <Button type="text" shape="circle" icon={<MoreOutlined style={{ fontSize: "18px", color: "#8A2BE2" }} />} />
+                <Tooltip title="聊天信息">
+                  <Button
+                    type="text"
+                    shape="circle"
+                    icon={<MoreOutlined style={{ fontSize: "18px", color: "#8A2BE2" }} />}
+                    onClick={() => setIsChatInfoVisible(true)}
+                  />
                 </Tooltip>
               </div>
               {/* TODO(暂无需考虑): 额外信息===================================================================== */}
@@ -1373,7 +1378,15 @@ const ChatPage = () => {
           websocket={groupDrawerWebsocket}
           setWebsocket={setGroupDrawerWebsocket}
         />
-
+        {/* 聊天信息抽屉 */}
+        <ChatInfoDrawer
+          visible={isChatInfoVisible}
+          onClose={() => setIsChatInfoVisible(false)}
+          conversationId={selectedConversationId}
+          isGroup={conversations.find((c) => c.id === selectedConversationId)?.is_chat_group || false}
+          groupName={conversations.find((c) => c.id === selectedConversationId)?.name}
+          groupAvatar={conversations.find((c) => c.id === selectedConversationId)?.avatar}
+        />
         {/* 回复列表弹窗 */}
         {showReplyList && (
           <div style={{
