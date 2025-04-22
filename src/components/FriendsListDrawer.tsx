@@ -303,7 +303,7 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
   };
 
   const handleGotoConversation = (friend: Friend | undefined) => {
-    if (friend == undefined) {
+    if (friend === undefined) {
       messageApi.error('请选择一个好友')
     }
     else {
