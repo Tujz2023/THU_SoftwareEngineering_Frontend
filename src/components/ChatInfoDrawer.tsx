@@ -58,7 +58,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
   const [isNotificationModalVisible, setIsNotificationModalVisible] = useState(false);
   const [notificationContent, setNotificationContent] = useState('');
   const [isPostingNotification, setIsPostingNotification] = useState(false);
-  const [deletingNotificationId, setDeletingNotificationId] = useState<number | null>(null);
+  const [deletingNotificationId, setDeletingNotificationId] = useState<number | undefined>(undefined);
 
   // 初始化群组信息
   useEffect(() => {
@@ -369,7 +369,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     } catch (error) {
       messageApi.error("网络错误，请稍后重试");
     } finally {
-      setDeletingNotificationId(null);
+      setDeletingNotificationId(undefined);
     }
   };
 
@@ -1281,7 +1281,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
           setIsNotificationModalVisible(false);
           setNotificationContent('');
         }}
-        footer={null}
+        footer={undefined}
         styles={{
           mask: { backdropFilter: 'blur(4px)', background: 'rgba(0,0,0,0.45)' },
           header: { 
