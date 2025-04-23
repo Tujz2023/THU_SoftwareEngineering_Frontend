@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Cookies from "js-cookie";
 import { Input, Button, Layout, List, Avatar, Typography, message, Badge, Empty, Tooltip, Spin, Divider, Tag } from "antd";
-import { MessageOutlined, TeamOutlined, SettingOutlined, PictureOutlined, SmileOutlined, MoreOutlined, ContactsOutlined, SendOutlined, SearchOutlined, ClockCircleOutlined, PlusCircleOutlined, CloseOutlined } from "@ant-design/icons";
+import { MessageOutlined, TeamOutlined, SettingOutlined, PictureOutlined, SmileOutlined, MoreOutlined, ContactsOutlined, SendOutlined, SearchOutlined, ClockCircleOutlined, PlusCircleOutlined, CloseOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import 'antd/dist/reset.css';
 import SettingsDrawer from "../components/SettingsDrawer";
 import FriendsListDrawer from "../components/FriendsListDrawer";
@@ -40,6 +40,7 @@ interface Message {
   reply_to_id?: number;
   conversation: string;
   created_time: string;
+  already_read?: boolean;
 }
 
 interface MessageReply {
@@ -51,6 +52,10 @@ interface MessageReply {
   time: string;
 }
 
+interface ReadUser {
+  avatar: string;
+  name: string;
+}
 const ChatPage = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const [search, setSearch] = useState("");
@@ -97,6 +102,10 @@ const ChatPage = () => {
   const [replyListLoading, setReplyListLoading] = useState(false);
   const [replyList, setReplyList] = useState<MessageReply[]>([]);
 
+  // 已读列表相关状态
+  const [showReadList, setShowReadList] = useState(false);
+  const [readListLoading, setReadListLoading] = useState(false);
+  const [readList, setReadList] = useState<ReadUser[]>([]);
   // 添加滚动到指定消息的函数
   const scrollToMessage = (messageId: number) => {
     if (messageRefs.current[messageId]) {
@@ -143,6 +152,9 @@ const ChatPage = () => {
     }
     else if (action === "viewReplies" && rightClickedMessage?.id) {
       fetchReplyList(rightClickedMessage.id);
+    }
+    else if (action === "viewReadList" && rightClickedMessage?.id) {
+      fetchReadList(rightClickedMessage.id);
     }
     setContextMenuPosition(undefined); // 关闭菜单
   }
@@ -307,7 +319,8 @@ const ChatPage = () => {
           reply_to: msg?.reply_to,
           reply_to_id: msg?.reply_to_id,
           created_time: msg.created_time,
-          conversation: msg.conversation
+          conversation: msg.conversation,
+          already_read: msg?.already_read
         }));
         
         setMessages(formattedMessages);
@@ -331,6 +344,40 @@ const ChatPage = () => {
       }
     } catch (error) {
       messageApi.error("网络错误，请稍后重试");
+    }
+  };
+
+  const fetchReadList = async (messageId: number) => {
+    setReadListLoading(true);
+    try {
+      const response = await fetch(`/api/conversations/readlist`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`
+        },
+        body: JSON.stringify({
+          message_id: messageId
+        })
+      });
+
+      const res = await response.json();
+      if (res.code === 0) {
+        setReadList(res.read_users);
+        setShowReadList(true);
+      } else if (res.code === -2) {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
+          router.push("/");
+        });
+      } else {
+        messageApi.error(res.info || "获取已读列表失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    } finally {
+      setReadListLoading(false);
     }
   };
 
@@ -994,7 +1041,7 @@ const ChatPage = () => {
                         {msg.sender !== "me" && (
                           <Avatar 
                             src={msg.senderavatar} 
-                            style={{ marginRight: '8px', alignSelf: 'flex-end' }}
+                            style={{ marginRight: '8px', alignSelf: 'flex-start' }}
                           />
                         )}
                         <div 
@@ -1018,6 +1065,20 @@ const ChatPage = () => {
                           }}
                           onContextMenu={(e) => handleMessageRightClick(e, msg)}
                         >
+                          {/* 群聊中且不是自己的消息时，显示发送者姓名 */}
+                          {conversations.find(c => c.id === selectedConversationId)?.is_chat_group && 
+                          msg.sender !== "me" && (
+                            <div style={{ 
+                              fontSize: '12px', 
+                              fontWeight: '500',
+                              marginBottom: '4px', 
+                              color: '#8A2BE2',
+                              paddingLeft: '2px'
+                            }}>
+                              {msg.sendername}
+                            </div>
+                          )}
+
                           {/* 如果有回复，显示回复的原消息 */}
                           {msg.reply_to_id && (
                             <div style={{
@@ -1088,6 +1149,22 @@ const ChatPage = () => {
                               fontSize: "11px", 
                               color: msg.sender === "me" ? "rgba(255,255,255,0.7)" : "#999",
                             }}>{formatTime(msg.created_time)}</Text>
+
+                            {/* 为自己发送的消息添加已读状态显示 */}
+                            {!conversations.find(c => c.id === selectedConversationId)?.is_chat_group && 
+                            msg.sender === "me" && (
+                              <Text style={{ 
+                                fontSize: "11px", 
+                                marginLeft: "4px",
+                                color: msg.already_read 
+                                  ? "rgba(255,255,255,0.7)"  
+                                  : "rgba(255, 220, 160, 0.95)", 
+                                fontWeight: msg.already_read ? "normal" : "500", 
+                                textShadow: "0px 1px 2px rgba(0,0,0,0.1)" 
+                              }}>
+                                {msg.already_read ? "已读" : "未读"}
+                              </Text>
+                            )}
                           </div>
                         </div>
                         {/* 如果是自己的消息，在右侧显示头像 */}
@@ -1189,6 +1266,30 @@ const ChatPage = () => {
                   <TeamOutlined style={{ fontSize: '14px', color: '#8A2BE2' }} />
                   查看回复列表
                 </div>
+                {/* 添加查看已读列表选项，仅在群聊中显示 */}
+                {conversations.find(c => c.id === selectedConversationId)?.is_chat_group && (
+                  <div 
+                    onClick={() => handleMenuClick('viewReadList')}
+                    style={{
+                      padding: '8px 16px',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s',
+                      fontSize: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(138, 43, 226, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <CheckCircleOutlined style={{ fontSize: '14px', color: '#8A2BE2' }} />
+                    查看已读列表
+                  </div>
+                )}
                 {/* 添加查看原消息选项，当消息有回复时才显示 */}
                 {rightClickedMessage?.reply_to_id && (
                   <div 
@@ -1510,6 +1611,92 @@ const ChatPage = () => {
                               {item.content}
                             </div>
                           }
+                        />
+                      </List.Item>
+                    )}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        {/* 已读列表弹窗 */}
+        {showReadList && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1010,
+          }}>
+            <div style={{
+              width: '400px',
+              maxHeight: '70vh',
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
+            }}>
+              {/* 弹窗标题 */}
+              <div style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid #f0f0f0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: 'rgba(138, 43, 226, 0.03)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CheckCircleOutlined style={{ color: '#8A2BE2' }} />
+                  <Text strong style={{ fontSize: '16px', color: '#8A2BE2' }}>
+                    已读成员 ({readList.length})
+                  </Text>
+                </div>
+                <Button 
+                  type="text" 
+                  icon={<CloseOutlined />} 
+                  onClick={() => {
+                    setShowReadList(false);
+                    setReadList([]);
+                  }} 
+                />
+              </div>
+              
+              {/* 已读列表内容 */}
+              <div style={{
+                padding: '0',
+                overflowY: 'auto',
+                flex: 1,
+                maxHeight: 'calc(70vh - 60px)'
+              }}>
+                {readListLoading ? (
+                  <div style={{ padding: '40px 0', display: 'flex', justifyContent: 'center' }}>
+                    <Spin />
+                  </div>
+                ) : readList.length === 0 ? (
+                  <Empty 
+                    description="暂无已读成员" 
+                    style={{ margin: '40px 0' }} 
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  />
+                ) : (
+                  <List
+                    dataSource={readList}
+                    renderItem={item => (
+                      <List.Item style={{
+                        padding: '12px 20px',
+                        borderBottom: '1px solid #f0f0f0'
+                      }}>
+                        <List.Item.Meta
+                          avatar={<Avatar src={item.avatar} />}
+                          title={<Text>{item.name}</Text>}
                         />
                       </List.Item>
                     )}
