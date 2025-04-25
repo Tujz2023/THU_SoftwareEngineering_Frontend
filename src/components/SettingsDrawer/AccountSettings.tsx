@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Avatar, Typography, Button, Modal, Upload, message, Form, Input, Card, Divider, Row, Col, Tooltip, Spin } from "antd";
-import { UserOutlined, MailOutlined, InfoCircleOutlined, LockOutlined, LogoutOutlined, DeleteOutlined, EditOutlined, KeyOutlined, UploadOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { SafetyOutlined, UserOutlined, MailOutlined, InfoCircleOutlined, LockOutlined, LogoutOutlined, DeleteOutlined, EditOutlined, KeyOutlined, UploadOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import Cookies from "js-cookie";
 import { useRouter } from "next/router";
 import { encrypt, decrypt } from '../../utils/crypto';
@@ -21,6 +21,12 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
   const [passwordForm] = Form.useForm();
   const router = useRouter();
   const token = Cookies.get("jwtToken");
+  const [verifyCode, setVerifyCode] = useState('');
+  const [savedVerifyCode, setSavedVerifyCode] = useState('');
+  const [verifyCodeExpiry, setVerifyCodeExpiry] = useState<Date | undefined>(undefined);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [userEmail, setUserEmail] = useState('');
 
   const handleLogout = () => {
     Cookies.remove("jwtToken");
@@ -30,6 +36,15 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
       content: "已退出登录，正在跳转至登录界面..."
     }).then(() => {router.push('/')});
   };
+
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    } else {
+      setIsSendingCode(false);
+    }
+  }, [countdown]);
 
   const handleDeleteAccount = () => {
     fetch("/api/account/delete", {
@@ -124,6 +139,24 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
   };
 
   const handleEditInfo = async (values: any) => {
+    if (userEmail.trim()) {
+      if (!savedVerifyCode || !verifyCodeExpiry || new Date() > verifyCodeExpiry) {
+        messageApi.open({
+            type: 'error',
+            content: "验证码已失效或还未生成，请重新获取"
+        });
+        return;
+      }
+
+      if (verifyCode !== savedVerifyCode) {
+        messageApi.open({
+            type: 'error',
+            content: "验证码不正确"
+        });
+        return;
+      }
+    }
+    
     try {
     const payload = {
       "origin_password": await encrypt(values.origin_password),
@@ -159,6 +192,12 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
           });
           setIsEditModalVisible(false);
           setIsPasswordModalVisible(false);
+          setVerifyCodeExpiry(undefined);
+          setIsSendingCode(false);
+          setCountdown(0);
+          setUserEmail('');
+          setVerifyCode('');
+          setSavedVerifyCode('');
           fetchUserInfo();
         } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
           Cookies.remove("jwtToken");
@@ -179,6 +218,48 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
     } catch(error) {
       console.error('Error ', error);
     }
+  };
+
+  const handleSendVerifyCode = async () => {
+
+    setIsSendingCode(true);
+    setCountdown(60);
+    
+    await fetch('api/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email: userEmail }),
+    })
+      .then((res) => res.json())
+      .then(async (res) => {
+        if (res.code === 0) {
+          const decrypted_code = await decrypt(res.verify_code);
+          console.log(decrypted_code);
+          setSavedVerifyCode(decrypted_code);
+          setVerifyCodeExpiry(new Date(Date.now() + 5 * 60 * 1000));
+          messageApi.open({
+            type: 'success',
+            content: "验证码发送成功，5分钟内有效"
+          });
+        } else {
+          messageApi.open({
+            type: 'error',
+            content: res.info || "验证码发送失败，请稍后重试"
+          });
+          setCountdown(0);
+          setIsSendingCode(false);
+        }
+      })
+      .catch(() => {
+        messageApi.open({
+          type: 'error',
+          content: "网络错误，请稍后重试"
+        });
+        // setCountdown(0);
+        // setIsSendingCode(false);
+      });
   };
 
   if (!userInfo) {
@@ -392,6 +473,9 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
           open={isEditModalVisible}
           onCancel={() => {
             setIsEditModalVisible(false);
+            setUserEmail('');
+            setVerifyCode('');
+            setSavedVerifyCode('');
             form.resetFields();
           }}
           onOk={() => form.submit()}
@@ -501,9 +585,44 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
                 placeholder="请输入邮箱" 
                 style={{ borderRadius: '8px' }} 
                 prefix={<MailOutlined style={{ color: 'rgba(0,0,0,0.25)' }} />}
+                value={userEmail}
+                onChange={(e) => setUserEmail(e.target.value)}
               />
             </Form.Item>
-            
+
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+              <Input
+                placeholder="验证码"
+                prefix={<SafetyOutlined style={{ color: 'rgba(0,0,0,0.25)' }} />}
+                value={verifyCode}
+                disabled={!userEmail.trim()}
+                onChange={(e) => setVerifyCode(e.target.value)}
+                style={{
+                  borderRadius: '10px',
+                  height: '32px',
+                  flex: 1,
+                  marginRight: '8px'
+                }}
+              />
+              <Button
+                type="primary"
+                disabled={isSendingCode || (!userEmail.trim())}
+                onClick={handleSendVerifyCode}
+                style={{
+                  height: '32px',
+                  borderRadius: '10px',
+                  minWidth: '120px',
+                  background: (isSendingCode || (!userEmail.trim())) ? '#B0B0B0' : 'linear-gradient(45deg, #8A2BE2, #4169E1)',
+                  border: 'none',
+                  boxShadow: (isSendingCode || (!userEmail.trim())) ? 'none' : '0 4px 10px rgba(138, 43, 226, 0.2)',
+                  color: '#FFFFFF',
+                  fontSize: '12px'
+                }}
+              >
+                {isSendingCode ? `已发送(${countdown}s)` : '发送验证码'}
+              </Button>
+            </div>
+
             <Form.Item 
               label={
                 <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -515,7 +634,7 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
             >
               <Input.TextArea 
                 placeholder="请输入个人简介" 
-                style={{ borderRadius: '8px', minHeight: '80px' }}
+                style={{ borderRadius: '8px', minHeight: '100px' }}
               />
             </Form.Item>
             

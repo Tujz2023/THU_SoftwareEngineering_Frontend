@@ -72,7 +72,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
 
   // 获取群聊成员列表
   const fetchChatMembers = async () => {
-    if (!conversationId) return;
+    if (!conversationId) {
+      messageApi.error("请选择一个聊天");
+      return;
+    }
     
     setmemberLoading(true);
     const token = Cookies.get("jwtToken");
@@ -92,14 +95,6 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
         setMembers(res.members);
         if (isGroup) {
           setUserIdentity(res.identity);
-          
-          // 如果API返回了群聊信息，则使用API返回的信息
-          if (res.conversation) {
-            setGroupInfo({
-              name: res.conversation.name || groupName || '',
-              avatar: res.conversation.avatar || groupAvatar || ''
-            });
-          }
         }
       } else if (res.code === -2) {
         Cookies.remove("jwtToken");
@@ -117,7 +112,14 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
 
   // 获取群公告列表
   const fetchNotifications = async () => {
-    if (!conversationId || !isGroup) return;
+    if (!conversationId) {
+      messageApi.error("请选择一个聊天");
+      return;
+    }
+    if (!isGroup) {
+      messageApi.error("非群聊无法发送公告");
+      return 
+    }
     
     setNotificationLoading(true);
     const token = Cookies.get("jwtToken");
@@ -151,9 +153,12 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
 
   // 设置管理员
   const setAdmin = async (memberId: number) => {
-    if (!conversationId) return;
+    if (!conversationId) {
+      messageApi.error("请选择一个聊天");
+      return;
+    }
     
-    setLoadingAction(memberId);
+    setLoadingAction(memberId);   // TODO: what's this
     const token = Cookies.get("jwtToken");
 
     try {
@@ -191,7 +196,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
 
   // 解除管理员
   const removeAdmin = async (memberId: number) => {
-    if (!conversationId) return;
+    if (!conversationId) {
+      messageApi.error("请选择一个聊天");
+      return;
+    }
     
     setLoadingAction(memberId);
     const token = Cookies.get("jwtToken");
@@ -231,7 +239,14 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
 
   // 转让群主
   const transferOwnership = async () => {
-    if (!conversationId || !targetMember) return;
+    if (!conversationId) {
+      messageApi.error("请选择一个聊天");
+      return;
+    }
+    if (!targetMember) {
+      messageApi.error("请选择一个转让对象");
+      return;
+    }
     
     setTransferLoading(true);
     const token = Cookies.get("jwtToken");
@@ -258,6 +273,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
         setUserIdentity(3); // 转让后变为普通成员
         // 重新获取成员列表
         fetchChatMembers();
+        setTargetMember(undefined);
       } else if (res.code === -2) {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
@@ -286,7 +302,14 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
 
   // 发布群公告
   const postNotification = async () => {
-    if (!conversationId || !notificationContent.trim()) return;
+    if (!conversationId) {
+      messageApi.error("请选择一个聊天");
+      return;
+    }
+    if (!notificationContent.trim()) {
+      messageApi.error("请不要发送空公告");
+      return;
+    }
     
     setIsPostingNotification(true);
     const token = Cookies.get("jwtToken");
@@ -330,8 +353,11 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
 
   // 删除群公告
   const deleteNotification = async (notificationId: number) => {
-    if (!notificationId) return;
-    
+    if (!notificationId) {
+      messageApi.error("请选择一个待删除的群公告");
+      return;
+    }
+
     setDeletingNotificationId(notificationId);
     const token = Cookies.get("jwtToken");
 
@@ -376,6 +402,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
   // 当抽屉可见时，获取相关数据
   useEffect(() => {
     if (visible) {
+      setActiveMenu("聊天成员");
       fetchChatMembers();
       setSearchText(""); // 重置搜索框
       if (isGroup) {
@@ -438,7 +465,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
 
   // 更新群信息
   const updateGroupInfo = async (values: any) => {
-    if (!conversationId) return;
+    if (!conversationId) {
+      messageApi.error("请选择一个聊天");
+      return;
+    }
     
     setIsSubmitting(true);
     const token = Cookies.get("jwtToken");
@@ -490,7 +520,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
         // 关闭模态框
         setIsGroupInfoModalVisible(false);
         // 重新获取成员列表以及群信息
-        fetchChatMembers();
+        // fetchChatMembers();
       } else if (res.code === -2) {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
@@ -662,41 +692,43 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                   }
                 }
               },
-              {
-                key: 'groupAnnouncement',
-                title: '群公告',
-                content: (
-                  <div style={{ marginTop: "8px" }}>
-                    {notificationLoading ? (
-                      <div style={{ textAlign: "center", padding: "10px 0" }}>
-                        <Spin size="small" />
-                      </div>
-                    ) : notifications.length > 0 ? (
-                      <div>
-                        <Text type="secondary" ellipsis>
-                          最新公告: {notifications[0].content}
-                        </Text>
-                        <div style={{ marginTop: "5px", fontSize: "12px", color: "#999" }}>
-                          {new Date(notifications[0].timestamp).toLocaleString('zh-CN', {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </div>
-                      </div>
-                    ) : (
-                      <Text type="secondary">暂无群公告</Text>
-                    )}
-                  </div>
-                ),
-                clickable: true,
-                onClick: () => {
-                  // 打开群公告详情页面
-                  setActiveMenu("群公告");
-                }
-              }
+              // {
+              //   key: 'groupAnnouncement',
+              //   title: '群公告',
+              //   content: (
+              //     <div style={{ marginTop: "8px" }}>
+              //       {notificationLoading ? (
+              //         <div style={{ textAlign: "center", padding: "10px 0" }}>
+              //           <Spin size="small" />
+              //         </div>
+              //       ) : notifications.length > 0 ? (
+              //         <div>
+              //           <Text type="secondary" ellipsis>
+              //             最新公告: {notifications[0].content}
+              //           </Text>
+              //           <div style={{ marginTop: "5px", fontSize: "12px", color: "#999" }}>
+              //             {new Date(notifications[0].timestamp).toLocaleString('zh-CN', {
+              //               year: 'numeric',
+              //               month: '2-digit',
+              //               day: '2-digit',
+              //               hour: '2-digit',
+              //               minute: '2-digit'
+              //             })}
+              //           </div>
+              //         </div>
+              //       ) : (
+              //         <Text type="secondary">暂无群公告</Text>
+              //       )}
+              //     </div>
+              //   ),
+              //   clickable: true,
+              //   onClick: () => {
+              //     // 打开群公告详情页面
+              //     setActiveMenu("群公告");
+              //   }
+              // }
+
+              // TODO: 置顶、免打扰
             ]}
             renderItem={item => (
               <List.Item
@@ -746,16 +778,18 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                     padding: "16px",
                     borderRadius: "8px",
                     backgroundColor: "rgba(255, 0, 0, 0.05)",
-                    cursor: "pointer",
+                    // cursor: "pointer",
                     border: "none" // 移除边框，解决黑点问题
                   }}
-                  onClick={item.onClick}
                 >
-                  <div style={{ width: "100%" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text strong style={{ color: "red" }}>{item.title}</Text>
-                    </div>
-                    {item.content}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Button 
+                      type="primary"
+                      danger
+                      onClick={item.onClick}>{item.title}</Button>
+                    <Text type="secondary" style={{ marginLeft: "16px" }}>
+                      {item.content}
+                    </Text>
                   </div>
                 </List.Item>
               )}
@@ -1013,6 +1047,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
           }
         }}
         headerStyle={{ color: "white" }}
+        closeIcon={<div style={{ color: "white", fontSize: "16px" }}>✕</div>}
       >
         {isGroup ? (
           <div style={{ display: "flex", height: "100%" }}>
@@ -1133,6 +1168,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                 style={{ margin: "60px 0" }}
               />
             )}
+            {/* TODO: 增加设置置顶&免打扰 */}
           </div>
         )}
       </Drawer>
@@ -1281,7 +1317,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
           setIsNotificationModalVisible(false);
           setNotificationContent('');
         }}
-        footer={undefined}
+        footer={[]}
         styles={{
           mask: { backdropFilter: 'blur(4px)', background: 'rgba(0,0,0,0.45)' },
           header: { 
@@ -1392,7 +1428,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       <Modal
         title="转让群主"
         open={transferModalVisible}
-        onCancel={() => setTransferModalVisible(false)}
+        onCancel={() => {setTransferModalVisible(false); setTargetMember(undefined);}}
         footer={[
           <Button 
             key="submit" 
