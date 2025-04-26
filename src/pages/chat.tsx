@@ -20,6 +20,7 @@ interface Conversation {
   name: string;
   avatar: string;
   last_message: string;
+  last_message_type: number;
   last_message_time: string;
   is_chat_group: boolean;
   is_top: boolean;
@@ -37,6 +38,7 @@ interface Message {
   sendername: string;
   senderavatar: string;
   reply_to?: string;
+  reply_to_type?: number;
   reply_to_id?: number;
   conversation: string;
   created_time: string;
@@ -45,6 +47,7 @@ interface Message {
 
 interface MessageReply {
   reply_id: number;
+  reply_type: number;
   sender_id: number;
   sender_name: string;
   sender_avatar: string;
@@ -317,6 +320,7 @@ const ChatPage = () => {
           sendername: msg.sendername,
           senderavatar: msg.senderavatar,
           reply_to: msg?.reply_to,
+          reply_to_type: msg?.reply_to_type,
           reply_to_id: msg?.reply_to_id,
           created_time: msg.created_time,
           conversation: msg.conversation,
@@ -920,7 +924,7 @@ const ChatPage = () => {
                         description={
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Text ellipsis style={{ maxWidth: '180px', fontSize: '13px', color: '#666' }}>
-                              {conversation.last_message_time ? conversation.last_message : '暂无消息'}
+                              {conversation.last_message_time === '' ? '暂无消息' : (conversation.last_message_type === 1 ? '[图片]' : conversation.last_message)}
                             </Text>
                             {conversation.is_top && (
                               <Tag color="#8A2BE2" style={{ margin: 0, fontSize: '10px' }}>置顶</Tag>
@@ -1098,7 +1102,10 @@ const ChatPage = () => {
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap'
                               }}>
-                                {messages.find(m => m.id === msg.reply_to_id)?.content || msg.reply_to || "原消息不可用"}
+                                {/* {messages.find(m => m.id === msg.reply_to_id)?.content || msg.reply_to || "原消息不可用"} */}
+                                {msg.reply_to_type === 0 ? msg.reply_to : 
+                                  <img src={msg.reply_to} alt="回复图片" style={{ maxWidth: '100%', maxHeight: '100px' }} />
+                                }
                               </div>
                             </div>
                           )}
@@ -1355,7 +1362,11 @@ const ChatPage = () => {
                       回复 <span style={{ color: '#8A2BE2', fontWeight: 'bold' }}>{replyToMessage.sendername}</span>
                     </div>
                     <div style={{ color: '#666', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {replyToMessage.content}
+                    {replyToMessage.type === 1 ? (
+                      <img src={replyToMessage.content} alt="回复图片" style={{ maxWidth: '100%', maxHeight: '100px' }} />
+                    ) : (
+                      replyToMessage.content
+                    )}
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
