@@ -72,7 +72,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
   // 邀请相关状态
   const [invitations, setInvitations] = useState<any[]>([]); 
   const [invitationLoading, setInvitationLoading] = useState(false);
-  const [processingInviteId, setProcessingInviteId] = useState<number | null>(null);
+  const [processingInviteId, setProcessingInviteId] = useState<number | undefined>(undefined);
 
   // 初始化群组信息
   useEffect(() => {
@@ -600,7 +600,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     } catch (error) {
       messageApi.error("网络错误，请稍后重试");
     } finally {
-      setProcessingInviteId(null);
+      setProcessingInviteId(undefined);
     }
   };
 
@@ -1365,7 +1365,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                           size="middle"
                           onClick={() => handleInvitation(item.invite_id, false)}
                           loading={processingInviteId === item.invite_id}
-                          disabled={processingInviteId !== null && processingInviteId !== item.invite_id}
+                          disabled={processingInviteId !== undefined && processingInviteId !== item.invite_id}
                         >
                           拒绝
                         </Button>
@@ -1378,7 +1378,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                           }}
                           onClick={() => handleInvitation(item.invite_id, true)}
                           loading={processingInviteId === item.invite_id}
-                          disabled={processingInviteId !== null && processingInviteId !== item.invite_id}
+                          disabled={processingInviteId !== undefined && processingInviteId !== item.invite_id}
                         >
                           同意
                         </Button>
