@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Drawer, List, Avatar, Typography, message, Spin, Divider, Tag, Empty, Input, Dropdown, Button, Modal, Form, Upload } from "antd";
-import { UserOutlined, CrownOutlined, UserSwitchOutlined, SearchOutlined, TeamOutlined, SettingOutlined, MoreOutlined, EditOutlined, UploadOutlined, NotificationOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Drawer, List, Avatar, Typography, message, Spin, Divider, Tag, Empty, Input, Dropdown, Button, Modal, Form, Upload, Checkbox, Radio } from "antd";
+import { UserOutlined, CrownOutlined, UserSwitchOutlined, SearchOutlined, TeamOutlined, SettingOutlined, MoreOutlined, EditOutlined, UploadOutlined, NotificationOutlined, DeleteOutlined, PlusOutlined, UserAddOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { Friend } from "../utils/types";
 import Cookies from "js-cookie";
 
 const { Text, Title } = Typography;
@@ -59,6 +60,14 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
   const [notificationContent, setNotificationContent] = useState('');
   const [isPostingNotification, setIsPostingNotification] = useState(false);
   const [deletingNotificationId, setDeletingNotificationId] = useState<number | undefined>(undefined);
+
+  // 添加邀请成员相关状态
+  const [isInviteModalVisible, setIsInviteModalVisible] = useState(false);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [friendsLoading, setFriendsLoading] = useState(false);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [selectedFriend, setSelectedFriend] = useState<number | null>(null);
+  const [searchFriendText, setSearchFriendText] = useState("");
 
   // 初始化群组信息
   useEffect(() => {
@@ -149,6 +158,99 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     } finally {
       setNotificationLoading(false);
     }
+  };
+
+  // 获取好友列表
+  const fetchFriends = async () => {
+    setFriendsLoading(true);
+    const token = Cookies.get("jwtToken");
+
+    try {
+      const response = await fetch("/api/friends", {
+        method: "GET",
+        headers: {
+          Authorization: `${token}`,
+        },
+      });
+
+      const res = await response.json();
+
+      if (res.code === 0) {
+        // 过滤掉已经在群里的成员
+        const existingMemberIds = members.map(member => member.id);
+        const availableFriends = res.friends.filter((friend: Friend) => 
+          !existingMemberIds.includes(friend.id) && !friend.deleted
+        );
+        setFriends(availableFriends);
+      } else if (res.code === -2) {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+      } else {
+        messageApi.error(res.info || "获取好友列表失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    } finally {
+      setFriendsLoading(false);
+    }
+  };
+
+  // 邀请好友加入群聊
+  const inviteFriends = async () => {
+    if (selectedFriend === null) {
+      messageApi.warning("请选择一位好友");
+      return;
+    }
+
+    setInviteLoading(true);
+    const token = Cookies.get("jwtToken");
+
+    try {
+      const response = await fetch(`/api/conversations/member/add`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+        body: JSON.stringify({
+          conversationId: conversationId,
+          member_id: selectedFriend,
+        }),
+      });
+
+      const res = await response.json();
+      
+      if (res.code === 0) {
+        messageApi.success(res.message || "邀请成功，等待管理员确认");
+        setIsInviteModalVisible(false);
+        setSelectedFriend(null);
+      } else if (res.code === -2) {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+      } else if (res.code === -3) {
+        messageApi.error("选择的好友已经是群成员");
+      } else if (res.code === -4) {
+        messageApi.error("选择的用户不是您的好友");
+      } else if (res.code === -5) {
+        messageApi.warning("已发送邀请，正在等待管理员确认");
+      } else {
+        messageApi.error(res.info || "邀请好友失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  // 处理邀请模态框打开事件
+  const handleOpenInviteModal = () => {
+    setIsInviteModalVisible(true);
+    fetchFriends();
+    setSearchFriendText("");
+    setSelectedFriend(null);
   };
 
   // 设置管理员
@@ -557,11 +659,37 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       <>
         {isGroup && (
           <div style={{ padding: "16px 24px", backgroundColor: "white" }}>
-            <Text type="secondary">
-              {members.length} 位成员
-              {userIdentity === 1 && " · 你是群主"}
-              {userIdentity === 2 && " · 你是管理员"}
-            </Text>
+            <div style={{ 
+              display: "flex", 
+              justifyContent: "space-between", 
+              alignItems: "center"
+            }}>
+              <Text type="secondary">
+                {members.length} 位成员
+                {userIdentity === 1 && " · 你是群主"}
+                {userIdentity === 2 && " · 你是管理员"}
+              </Text>
+              
+              {/* 添加邀请按钮 */}
+              <Button
+                type="primary"
+                icon={<UserAddOutlined />}
+                size="small"
+                onClick={handleOpenInviteModal}
+                style={{ 
+                  background: "#8A2BE2", 
+                  borderColor: "#8A2BE2",
+                  borderRadius: "16px",
+                  fontSize: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "0 12px",
+                  height: "28px"
+                }}
+              >
+                邀请好友
+              </Button>
+            </div>
             
             <Input
               placeholder="搜索群成员"
@@ -692,43 +820,6 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                   }
                 }
               },
-              // {
-              //   key: 'groupAnnouncement',
-              //   title: '群公告',
-              //   content: (
-              //     <div style={{ marginTop: "8px" }}>
-              //       {notificationLoading ? (
-              //         <div style={{ textAlign: "center", padding: "10px 0" }}>
-              //           <Spin size="small" />
-              //         </div>
-              //       ) : notifications.length > 0 ? (
-              //         <div>
-              //           <Text type="secondary" ellipsis>
-              //             最新公告: {notifications[0].content}
-              //           </Text>
-              //           <div style={{ marginTop: "5px", fontSize: "12px", color: "#999" }}>
-              //             {new Date(notifications[0].timestamp).toLocaleString('zh-CN', {
-              //               year: 'numeric',
-              //               month: '2-digit',
-              //               day: '2-digit',
-              //               hour: '2-digit',
-              //               minute: '2-digit'
-              //             })}
-              //           </div>
-              //         </div>
-              //       ) : (
-              //         <Text type="secondary">暂无群公告</Text>
-              //       )}
-              //     </div>
-              //   ),
-              //   clickable: true,
-              //   onClick: () => {
-              //     // 打开群公告详情页面
-              //     setActiveMenu("群公告");
-              //   }
-              // }
-
-              // TODO: 置顶、免打扰
             ]}
             renderItem={item => (
               <List.Item
@@ -739,7 +830,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                   marginBottom: "12px",
                   cursor: item.clickable ? "pointer" : "default",
                   opacity: item.clickable ? 1 : 0.7,
-                  border: "none" // 移除边框，解决黑点问题
+                  border: "none" 
                 }}
                 onClick={item.onClick}
               >
@@ -1454,6 +1545,156 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                 确认将群主转让给该成员？
               </Text>
             </>
+          )}
+        </div>
+      </Modal>
+
+      {/* 邀请好友模态框 */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', color: '#8A2BE2' }}>
+            <UserAddOutlined style={{ marginRight: '8px' }} />
+            <span>邀请好友加入群聊</span>
+          </div>
+        }
+        open={isInviteModalVisible}
+        onCancel={() => {
+          setIsInviteModalVisible(false);
+          setSelectedFriend(null);
+        }}
+        footer={[
+          <Button 
+            key="cancel" 
+            onClick={() => {
+              setIsInviteModalVisible(false);
+              setSelectedFriend(null);
+            }}
+          >
+            取消
+          </Button>,
+          <Button 
+            key="submit" 
+            type="primary" 
+            loading={inviteLoading}
+            onClick={inviteFriends}
+            disabled={selectedFriend === null}
+            style={{ 
+              background: selectedFriend === null ? '#d9d9d9' : '#8A2BE2', 
+              borderColor: selectedFriend === null ? '#d9d9d9' : '#8A2BE2' 
+            }}
+          >
+            发送邀请
+          </Button>,
+        ]}
+        styles={{
+          mask: { backdropFilter: 'blur(2px)', background: 'rgba(0,0,0,0.4)' },
+          header: { borderBottom: '1px solid rgba(138, 43, 226, 0.1)' },
+          footer: { borderTop: '1px solid rgba(138, 43, 226, 0.1)' }
+        }}
+      >
+        <div style={{ marginBottom: "16px" }}>
+          <Input
+            placeholder="搜索好友"
+            prefix={<SearchOutlined style={{ color: "#8A2BE2" }} />}
+            allowClear
+            value={searchFriendText}
+            onChange={(e) => setSearchFriendText(e.target.value)}
+            style={{ 
+              borderRadius: "8px",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+            }}
+          />
+        </div>
+        <div style={{ 
+          height: "300px", 
+          overflowY: "auto", 
+          borderRadius: "8px", 
+          border: "1px solid #f0f0f0",
+          padding: "4px" 
+        }}>
+          {friendsLoading ? (
+            <div style={{ display: "flex", justifyContent: "center", padding: "32px 0" }}>
+              <Spin />
+            </div>
+          ) : friends.length > 0 ? (
+            <List
+              itemLayout="horizontal"
+              dataSource={friends.filter(friend => 
+                friend.name.toLowerCase().includes(searchFriendText.toLowerCase()) ||
+                friend.email.toLowerCase().includes(searchFriendText.toLowerCase())
+              )}
+              renderItem={(item) => (
+                <List.Item
+                  style={{
+                    padding: "10px 8px",
+                    cursor: "pointer",
+                    borderRadius: "8px",
+                    transition: "all 0.2s ease",
+                    backgroundColor: selectedFriend === item.id 
+                      ? "rgba(138, 43, 226, 0.1)" 
+                      : "transparent",
+                    border: "1px solid",
+                    borderColor: selectedFriend === item.id 
+                      ? "rgba(138, 43, 226, 0.3)" 
+                      : "transparent",
+                    marginBottom: "6px"
+                  }}
+                  onClick={() => {
+                    setSelectedFriend(selectedFriend === item.id ? null : item.id);
+                  }}
+                >
+                  <List.Item.Meta
+                    avatar={
+                      <div style={{ position: "relative" }}>
+                        <Avatar src={item.avatar} size={40} />
+                        {selectedFriend === item.id && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              bottom: -2,
+                              right: -2,
+                              width: "16px",
+                              height: "16px",
+                              borderRadius: "50%",
+                              backgroundColor: "#52c41a",
+                              display: "flex",
+                              justifyContent: "center",
+                              alignItems: "center",
+                              color: "white",
+                              fontSize: "12px",
+                              border: "2px solid white",
+                            }}
+                          >
+                            <CheckCircleOutlined style={{ fontSize: '10px' }} />
+                          </div>
+                        )}
+                      </div>
+                    }
+                    title={<Text strong>{item.name}</Text>}
+                    description={<Text type="secondary" style={{ fontSize: "12px" }}>{item.email}</Text>}
+                  />
+                  <div>
+                    <Radio 
+                      checked={selectedFriend === item.id}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedFriend(item.id);
+                        } else {
+                          setSelectedFriend(null);
+                        }
+                      }}
+                    />
+                  </div>
+                </List.Item>
+              )}
+            />
+          ) : (
+            <Empty 
+              description={searchFriendText ? "未找到匹配的好友" : "没有可邀请的好友"}
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              style={{ margin: "40px 0" }}
+            />
           )}
         </div>
       </Modal>
