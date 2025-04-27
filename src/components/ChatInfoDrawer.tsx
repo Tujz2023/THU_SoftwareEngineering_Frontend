@@ -66,8 +66,13 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
   const [friends, setFriends] = useState<Friend[]>([]);
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
-  const [selectedFriend, setSelectedFriend] = useState<number | null>(null);
+  const [selectedFriend, setSelectedFriend] = useState<number | undefined>(undefined);
   const [searchFriendText, setSearchFriendText] = useState("");
+
+  // 邀请相关状态
+  const [invitations, setInvitations] = useState<any[]>([]); 
+  const [invitationLoading, setInvitationLoading] = useState(false);
+  const [processingInviteId, setProcessingInviteId] = useState<number | null>(null);
 
   // 初始化群组信息
   useEffect(() => {
@@ -198,7 +203,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
 
   // 邀请好友加入群聊
   const inviteFriends = async () => {
-    if (selectedFriend === null) {
+    if (selectedFriend === undefined) {
       messageApi.warning("请选择一位好友");
       return;
     }
@@ -224,7 +229,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       if (res.code === 0) {
         messageApi.success(res.message || "邀请成功，等待管理员确认");
         setIsInviteModalVisible(false);
-        setSelectedFriend(null);
+        setSelectedFriend(undefined);
       } else if (res.code === -2) {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
@@ -250,7 +255,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     setIsInviteModalVisible(true);
     fetchFriends();
     setSearchFriendText("");
-    setSelectedFriend(null);
+    setSelectedFriend(undefined);
   };
 
   // 设置管理员
@@ -501,6 +506,104 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     }
   };
 
+  // 获取群聊邀请列表
+  const fetchInvitations = async () => {
+    if (!conversationId) {
+      messageApi.error("请选择一个聊天");
+      return;
+    }
+    if (!isGroup) {
+      messageApi.error("非群聊没有邀请列表");
+      return;
+    }
+    
+    setInvitationLoading(true);
+    const token = Cookies.get("jwtToken");
+
+    try {
+      const response = await fetch(`/api/conversations/invitation?conversation_id=${conversationId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+      });
+
+      const res = await response.json();
+      
+      if (res.code === 0) {
+        setInvitations(res.invitations || []);
+      } else if (res.code === -2) {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+      } else {
+        messageApi.error(res.info || "获取群聊邀请列表失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    } finally {
+      setInvitationLoading(false);
+    }
+  };
+
+  // 处理邀请（接受或拒绝）
+  const handleInvitation = async (inviteId: number, accept: boolean) => {
+    setProcessingInviteId(inviteId);
+    const token = Cookies.get("jwtToken");
+
+    try {
+      const response = await fetch(`/api/conversations/manage/handle_invitation`, {
+        method: accept ? "POST" : "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+        body: JSON.stringify({
+          invite_id: inviteId,
+        }),
+      });
+
+      const res = await response.json();
+      
+      if (res.code === 0) {
+        messageApi.success(res.message || (accept ? "已接受邀请" : "已拒绝邀请"));
+        // 更新邀请列表
+        fetchInvitations();
+        if (accept) {
+          // 如果接受邀请，刷新成员列表
+          fetchChatMembers();
+        }
+      } else if (res.code === -2) {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+      } else if (res.code === -3) {
+        messageApi.error("非群主或管理员不能处理邀请");
+      } else if (res.code === -4) {
+        messageApi.warning("该邀请已被处理");
+        // 刷新邀请列表
+        fetchInvitations();
+      } else if (res.code === -5) {
+        messageApi.error("邀请不存在");
+        // 从当前列表中移除
+        setInvitations(prevInvitations => 
+          prevInvitations.filter(invitation => invitation.invite_id !== inviteId)
+        );
+      } else if (res.code === -6) {
+        messageApi.warning("该用户已在群聊中");
+        // 更新邀请状态
+        fetchInvitations();
+      } else {
+        messageApi.error(res.info || "处理邀请失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    } finally {
+      setProcessingInviteId(null);
+    }
+  };
+
   // 当抽屉可见时，获取相关数据
   useEffect(() => {
     if (visible) {
@@ -509,7 +612,9 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       setSearchText(""); // 重置搜索框
       if (isGroup) {
         fetchNotifications(); // 获取群公告
+        fetchInvitations(); // 获取群聊邀请列表
       }
+
     }
   }, [visible, conversationId]);
 
@@ -648,7 +753,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
   const menuItems = isGroup ? [
     { key: "聊天成员", icon: <TeamOutlined />, title: "聊天成员" },
     { key: "聊天管理", icon: <SettingOutlined />, title: "聊天管理" },
-    { key: "群公告", icon: <NotificationOutlined />, title: "群公告" }
+    { key: "群公告", icon: <NotificationOutlined />, title: "群公告" },
+    { key: "群邀请", icon: <UserAddOutlined />, title: "群邀请", 
+      badge: (userIdentity < 3) ? true : false // 只有群主和管理员才显示badge
+    }
   ] : [
     { key: "联系人", icon: <UserOutlined />, title: "联系人" }
   ];
@@ -1099,6 +1207,253 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     );
   };
 
+  // 渲染群邀请内容
+  const renderInvitations = () => {
+    // 如果不是群主或管理员，显示没有权限
+    if (userIdentity > 2) {
+      return (
+        <div style={{ padding: "40px 24px", textAlign: "center" }}>
+          <Empty
+            image={
+              <div style={{ 
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                marginBottom: "20px" 
+              }}>
+                <UserAddOutlined style={{ 
+                  fontSize: "48px", 
+                  color: "rgba(138, 43, 226, 0.3)"
+                }} />
+              </div>
+            }
+            description={
+              <Text type="secondary" style={{ fontSize: "16px" }}>
+                只有群主或管理员可以查看和处理邀请
+              </Text>
+            }
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ padding: "16px 24px" }}>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "20px"
+        }}>
+          <Title level={5} style={{ margin: 0, color: "#8A2BE2" }}>待处理邀请</Title>
+          <Button 
+            type="text" 
+            icon={<div style={{ transform: "rotate(90deg)" }}>↻</div>} 
+            onClick={fetchInvitations}
+            loading={invitationLoading}
+          >
+            刷新
+          </Button>
+        </div>
+        
+        {invitationLoading ? (
+          <div style={{ 
+            textAlign: "center", 
+            padding: "60px 0", 
+            background: "rgba(255, 255, 255, 0.7)", 
+            borderRadius: "12px" 
+          }}>
+            <Spin size="large" />
+            <div style={{ marginTop: "16px", color: "#8A2BE2" }}>加载邀请列表中...</div>
+          </div>
+        ) : invitations.length > 0 ? (
+          <List
+            itemLayout="vertical"
+            dataSource={invitations}
+            renderItem={(item) => (
+              <List.Item
+                style={{
+                  padding: "16px",
+                  borderRadius: "12px",
+                  backgroundColor: item.status === 0 ? "white" : "rgba(245, 245, 245, 0.6)",
+                  marginBottom: "16px",
+                  boxShadow: item.status === 0 
+                    ? "0 2px 12px rgba(0,0,0,0.05)"
+                    : "none",
+                  border: "1px solid",
+                  borderColor: item.status === 0 
+                    ? "rgba(138, 43, 226, 0.1)" 
+                    : "rgba(0,0,0,0.06)",
+                  position: "relative"
+                }}
+              >
+                {/* 修改卡片布局结构，使其更灵活 */}
+                <div>
+                  {/* 用户信息和时间 */}
+                  <div style={{ 
+                    marginBottom: "12px", 
+                    display: "flex", 
+                    justifyContent: "space-between", 
+                    alignItems: "flex-start" 
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <Avatar src={item.sender_avatar} size={42} />
+                      <Text strong style={{ fontSize: "15px", maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {item.sender_name}
+                      </Text>
+                    </div>
+                    <Text type="secondary" style={{ fontSize: "13px", flexShrink: 0 }}>
+                      {new Date(item.timestamp).toLocaleString('zh-CN', {
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </Text>
+                  </div>
+                  
+                  {/* 邀请信息 */}
+                  <div style={{ 
+                    backgroundColor: "rgba(138, 43, 226, 0.03)",
+                    padding: "10px 12px",
+                    borderRadius: "8px",
+                    marginBottom: "12px",
+                    border: "1px dashed rgba(138, 43, 226, 0.15)"
+                  }}>
+                    <div style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "8px"
+                    }}>
+                      <div style={{ fontSize: "14px", color: "#666" }}>
+                        邀请成员加入群聊
+                      </div>
+                      <div style={{ 
+                        display: "flex", 
+                        alignItems: "center", 
+                        gap: "8px",
+                        padding: "4px 12px 4px 4px",
+                        backgroundColor: "white",
+                        borderRadius: "20px",
+                        width: "fit-content",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
+                        border: "1px solid rgba(138, 43, 226, 0.08)"
+                      }}>
+                        <Avatar src={item.receiver_avatar} size={24} />
+                        <Text strong style={{
+                          maxWidth: "120px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap"
+                        }}>
+                          {item.receiver_name}
+                        </Text>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 操作按钮或状态标签 */}
+                  <div>
+                    {item.status === 0 ? (
+                      <div style={{ 
+                        display: "flex", 
+                        justifyContent: "flex-end", 
+                        gap: "12px",
+                      }}>
+                        <Button 
+                          danger
+                          size="middle"
+                          onClick={() => handleInvitation(item.invite_id, false)}
+                          loading={processingInviteId === item.invite_id}
+                          disabled={processingInviteId !== null && processingInviteId !== item.invite_id}
+                        >
+                          拒绝
+                        </Button>
+                        <Button 
+                          type="primary" 
+                          size="middle"
+                          style={{ 
+                            background: "#8A2BE2", 
+                            borderColor: "#8A2BE2" 
+                          }}
+                          onClick={() => handleInvitation(item.invite_id, true)}
+                          loading={processingInviteId === item.invite_id}
+                          disabled={processingInviteId !== null && processingInviteId !== item.invite_id}
+                        >
+                          同意
+                        </Button>
+                      </div>
+                    ) : (
+                      <div style={{ 
+                        textAlign: "right"
+                      }}>
+                        <Tag color={
+                          item.status === 1 ? "error" : // 已拒绝
+                          item.status === 2 ? "success" : // 已同意
+                          "default" // 其他状态
+                        }>
+                          {
+                            item.status === 1 ? "已拒绝" : 
+                            item.status === 2 ? "已同意" : 
+                            item.status === 3 ? "用户已在群中" :
+                            "未知状态"
+                          }
+                        </Tag>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </List.Item>
+            )}
+          />
+        ) : (
+          <Empty 
+            image={
+              <div style={{ 
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                marginBottom: "20px" 
+              }}>
+                <UserAddOutlined style={{ 
+                  fontSize: "48px", 
+                  color: "rgba(138, 43, 226, 0.3)"
+                }} />
+              </div>
+            }
+            description={
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "8px"
+              }}>
+                <p style={{ fontSize: "16px", fontWeight: "500", color: "#333" }}>
+                  暂无邀请
+                </p>
+                <p style={{ 
+                  fontSize: "14px", 
+                  color: "#999",
+                  maxWidth: "240px",
+                  textAlign: "center",
+                  lineHeight: "1.6"
+                }}>
+                  当前没有待处理的群聊邀请
+                </p>
+              </div>
+            }
+            style={{ 
+              margin: "60px 0",
+              padding: "20px",
+              backgroundColor: "rgba(138, 43, 226, 0.02)",
+              borderRadius: "12px"
+            }}
+          />
+        )}
+      </div>
+    );
+  };
+
   // 渲染当前选中的内容
   const renderContent = () => {
     if (isGroup) {
@@ -1109,6 +1464,8 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
           return renderChatManagement();
         case "群公告":
           return renderNotifications();
+        case "群邀请":
+          return renderInvitations();
         default:
           return renderMemberList();
       }
@@ -1179,6 +1536,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                     transition: "all 0.3s ease",
                     display: "flex",
                     alignItems: "center",
+                    justifyContent: "space-between",
                   }}
                   onClick={() => setActiveMenu(item.key)}
                   onMouseEnter={(e) => {
@@ -1194,14 +1552,27 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                     }
                   }}
                 >
-                  <span style={{ 
-                    marginRight: "12px", 
-                    fontSize: "16px",
-                    color: activeMenu === item.key ? "#8A2BE2" : "#777",
-                  }}>
-                    {item.icon}
-                  </span>
-                  {item.title}
+                  <div style={{ display: "flex", alignItems: "center" }}>
+                    <span style={{ 
+                      marginRight: "12px", 
+                      fontSize: "16px",
+                      color: activeMenu === item.key ? "#8A2BE2" : "#777",
+                    }}>
+                      {item.icon}
+                    </span>
+                    {item.title}
+                  </div>
+                  
+                  {/* 如果是群邀请菜单项，并且是群主或管理员，显示提示徽章 */}
+                  {item.key === "群邀请" && item.badge && userIdentity < 3 && (
+                    <div style={{
+                      width: "8px",
+                      height: "8px",
+                      borderRadius: "50%",
+                      backgroundColor: "#ff4d4f",
+                      display: invitations.some(inv => inv.status === 0) ? "block" : "none"
+                    }} />
+                  )}
                 </div>
               ))}
             </div>
@@ -1560,14 +1931,14 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
         open={isInviteModalVisible}
         onCancel={() => {
           setIsInviteModalVisible(false);
-          setSelectedFriend(null);
+          setSelectedFriend(undefined);
         }}
         footer={[
           <Button 
             key="cancel" 
             onClick={() => {
               setIsInviteModalVisible(false);
-              setSelectedFriend(null);
+              setSelectedFriend(undefined);
             }}
           >
             取消
@@ -1577,10 +1948,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
             type="primary" 
             loading={inviteLoading}
             onClick={inviteFriends}
-            disabled={selectedFriend === null}
+            disabled={selectedFriend === undefined}
             style={{ 
-              background: selectedFriend === null ? '#d9d9d9' : '#8A2BE2', 
-              borderColor: selectedFriend === null ? '#d9d9d9' : '#8A2BE2' 
+              background: selectedFriend === undefined ? '#d9d9d9' : '#8A2BE2', 
+              borderColor: selectedFriend === undefined ? '#d9d9d9' : '#8A2BE2' 
             }}
           >
             发送邀请
@@ -1640,7 +2011,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                     marginBottom: "6px"
                   }}
                   onClick={() => {
-                    setSelectedFriend(selectedFriend === item.id ? null : item.id);
+                    setSelectedFriend(selectedFriend === item.id ? undefined : item.id);
                   }}
                 >
                   <List.Item.Meta
@@ -1681,7 +2052,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                         if (e.target.checked) {
                           setSelectedFriend(item.id);
                         } else {
-                          setSelectedFriend(null);
+                          setSelectedFriend(undefined);
                         }
                       }}
                     />
