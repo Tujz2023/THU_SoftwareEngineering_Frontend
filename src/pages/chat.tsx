@@ -613,7 +613,7 @@ const ChatPage = () => {
           Authorization: `${token}`,
         },
         body: JSON.stringify({
-          conversationId: conversationId,
+          conversationId,
           unreads: true
         }),
       });
@@ -669,7 +669,7 @@ const ChatPage = () => {
           Authorization: `${token}`,
         },
         body: JSON.stringify({
-          conversationId: conversationId,
+          conversationId,
           ontop: isTop
         }),
       });
@@ -705,7 +705,7 @@ const ChatPage = () => {
           Authorization: `${token}`,
         },
         body: JSON.stringify({
-          conversationId: conversationId,
+          conversationId,
           notification: noticeAble
         }),
       });

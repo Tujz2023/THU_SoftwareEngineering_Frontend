@@ -233,7 +233,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
           Authorization: `${token}`,
         },
         body: JSON.stringify({
-          conversationId: conversationId,
+          conversationId,
           member_id: selectedFriend,
         }),
       });
