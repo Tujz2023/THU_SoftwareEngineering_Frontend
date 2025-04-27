@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Cookies from "js-cookie";
 import { Input, Button, Layout, List, Avatar, Typography, message, Badge, Empty, Tooltip, Spin, Divider, Tag } from "antd";
-import { MessageOutlined, TeamOutlined, SettingOutlined, PictureOutlined, SmileOutlined, MoreOutlined, ContactsOutlined, SendOutlined, SearchOutlined, ClockCircleOutlined, PlusCircleOutlined, CloseOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { MessageOutlined, TeamOutlined, SettingOutlined, PictureOutlined, SmileOutlined, MoreOutlined, ContactsOutlined, SendOutlined, SearchOutlined, ClockCircleOutlined, PlusCircleOutlined, CloseOutlined, CheckCircleOutlined, PushpinOutlined, BellOutlined } from "@ant-design/icons";
 import 'antd/dist/reset.css';
 import SettingsDrawer from "../components/SettingsDrawer";
 import FriendsListDrawer from "../components/FriendsListDrawer";
@@ -537,7 +537,13 @@ const ChatPage = () => {
 
   // 修改会话点击处理函数
   const handleConversationClick = (conversationId: number) => {
-    if (conversationId === selectedConversationId) return ;
+    // 如果点击的是当前已选中的会话，刷新该会话的消息
+  if (conversationId === selectedConversationId) {
+    setLoadingMessage(true);
+    setMessages([]); // 清空消息，显示加载状态
+    fetchMessages(conversationId); // 重新获取消息
+    return;
+  }
     setLoadingMessage(true);
     setMessages([]);
     setSelectedConversationId(conversationId);
@@ -590,6 +596,154 @@ const ChatPage = () => {
       return timeString;
     }
   };
+
+  // 添加右键菜单相关状态
+  const [conversationMenuPosition, setConversationMenuPosition] = useState<{ x: number; y: number } | undefined>(undefined);
+  const [rightClickedConversationId, setRightClickedConversationId] = useState<number | undefined>(undefined);
+
+  // 标记会话为未读
+  const markAsUnread = async (conversationId: number) => {
+    const token = Cookies.get("jwtToken");
+
+    try {
+      const response = await fetch("/api/interface", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+        body: JSON.stringify({
+          conversationId: conversationId,
+          unreads: true
+        }),
+      });
+
+      const res = await response.json();
+      
+      if (res.code === 0) {
+        messageApi.success("已标记为未读");
+        fetchConversations(); // 刷新会话列表
+      } else if (res.code === -2) {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
+          router.push("/");
+        });
+      } else {
+        messageApi.error(res.info || "操作失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    } finally {
+      setConversationMenuPosition(undefined); // 关闭菜单
+    }
+  };
+
+  // 扩展处理会话菜单点击的功能
+  const handleConversationMenuClick = (action: string) => {
+    if (action === "markAsUnread" && rightClickedConversationId) {
+      markAsUnread(rightClickedConversationId);
+    } else if (action === "toggleTop" && rightClickedConversationId) {
+      const conversation = conversations.find(c => c.id === rightClickedConversationId);
+      if (conversation) {
+        toggleConversationTop(rightClickedConversationId, !conversation.is_top);
+      }
+    } else if (action === "toggleNotification" && rightClickedConversationId) {
+      const conversation = conversations.find(c => c.id === rightClickedConversationId);
+      if (conversation) {
+        toggleConversationNotification(rightClickedConversationId, !conversation.notice_able);
+      }
+    }
+    setConversationMenuPosition(undefined); // 关闭菜单
+  };
+
+  // 添加切换置顶状态的函数
+  const toggleConversationTop = async (conversationId: number, isTop: boolean) => {
+    const token = Cookies.get("jwtToken");
+
+    try {
+      const response = await fetch("/api/interface", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+        body: JSON.stringify({
+          conversationId: conversationId,
+          ontop: isTop
+        }),
+      });
+
+      const res = await response.json();
+      
+      if (res.code === 0) {
+        messageApi.success(isTop ? "会话已置顶" : "会话已取消置顶");
+        fetchConversations(); // 刷新会话列表
+      } else if (res.code === -2) {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
+          router.push("/");
+        });
+      } else {
+        messageApi.error(res.info || "操作失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    }
+  };
+
+  // 添加切换通知状态的函数
+  const toggleConversationNotification = async (conversationId: number, noticeAble: boolean) => {
+    const token = Cookies.get("jwtToken");
+
+    try {
+      const response = await fetch("/api/interface", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+        body: JSON.stringify({
+          conversationId: conversationId,
+          notification: noticeAble
+        }),
+      });
+
+      const res = await response.json();
+      
+      if (res.code === 0) {
+        messageApi.success(noticeAble ? "已开启消息通知" : "已设为免打扰");
+        fetchConversations(); // 刷新会话列表
+      } else if (res.code === -2) {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
+          router.push("/");
+        });
+      } else {
+        messageApi.error(res.info || "操作失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    }
+  };
+
+  // 处理会话右键点击
+  const handleConversationRightClick = (event: React.MouseEvent, conversationId: number) => {
+    event.preventDefault(); // 阻止默认右键菜单
+    setConversationMenuPosition({ x: event.clientX, y: event.clientY });
+    setRightClickedConversationId(conversationId);
+  };
+
+  // 添加点击文档关闭会话菜单的效果
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setConversationMenuPosition(undefined);
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   if (initialLoading) {
     return (
@@ -841,6 +995,7 @@ const ChatPage = () => {
                   renderItem={(conversation) => (
                     <List.Item 
                       onClick={() => {handleConversationClick(conversation.id);}} 
+                      onContextMenu={(e) => handleConversationRightClick(e, conversation.id)}
                       style={{ 
                         cursor: "pointer",
                         padding: "12px 16px",
@@ -868,48 +1023,57 @@ const ChatPage = () => {
                                   : "2px solid rgba(138, 43, 226, 0.3)" 
                               }}
                             />
-                            {conversation.unread_count > 0 && (
-                              conversation.notice_able ? (
-                                <Badge 
-                                  count={conversation.unread_count} 
-                                  style={{
-                                    position: 'absolute',
-                                    right: -5,
-                                    top: -5,
-                                    boxShadow: '0 0 0 2px white'
-                                  }}
-                                />
-                              ) : (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                                  <Badge 
-                                    dot 
-                                    style={{
-                                      position: 'absolute',
-                                      right: -2,
-                                      top: -2,
-                                      boxShadow: '0 0 0 2px white'
-                                    }}
-                                  />
-                                  <Tooltip title="消息免打扰" placement="top">
-                                    <Badge
-                                      count={<ClockCircleOutlined style={{ color: '#f5222d', fontSize: '10px' }} />}
-                                      style={{
-                                        position: 'absolute',
-                                        right: -12,
-                                        top: -12,
-                                        backgroundColor: '#fff',
-                                        boxShadow: '0 0 0 1px #f0f0f0',
-                                        borderRadius: '50%',
-                                        width: '16px',
-                                        height: '16px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
-                                      }}
-                                    />
-                                  </Tooltip>
+                            {/* 未读消息提示 */}
+                            {conversation.unread_count > 0 && conversation.notice_able && (
+                              <Badge 
+                                count={conversation.unread_count} 
+                                style={{
+                                  position: 'absolute',
+                                  right: -5,
+                                  top: -5,
+                                  boxShadow: '0 0 0 2px white'
+                                }}
+                              />
+                            )}
+                            
+                            {/* 免打扰标志 - 更醒目的显示方式 */}
+                            {!conversation.notice_able && (
+                              <Tooltip title="消息免打扰" placement="top">
+                                <div style={{
+                                  position: 'absolute',
+                                  right: -8,
+                                  top: -8,
+                                  backgroundColor: '#f5f5f5',
+                                  borderRadius: '50%',
+                                  width: '22px',
+                                  height: '22px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  border: '2px solid white',
+                                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                                }}>
+                                  <BellOutlined style={{ 
+                                    fontSize: '12px', 
+                                    color: '#ff7875',
+                                    position: 'relative',
+                                    zIndex: 2
+                                  }} />
                                 </div>
-                              )
+                              </Tooltip>
+                            )}
+                            
+                            {/* 未读消息但处于免打扰状态 */}
+                            {conversation.unread_count > 0 && !conversation.notice_able && (
+                              <Badge 
+                                dot 
+                                style={{
+                                  position: 'absolute',
+                                  right: -2,
+                                  top: 16,
+                                  boxShadow: '0 0 0 2px white'
+                                }}
+                              />
                             )}
                           </div>
                         }
@@ -1529,6 +1693,9 @@ const ChatPage = () => {
           isGroup={conversations.find((c) => c.id === selectedConversationId)?.is_chat_group || false}
           groupName={conversations.find((c) => c.id === selectedConversationId)?.name}
           groupAvatar={conversations.find((c) => c.id === selectedConversationId)?.avatar}
+          isTop={conversations.find((c) => c.id === selectedConversationId)?.is_top || false}
+          noticeAble={conversations.find((c) => c.id === selectedConversationId)?.notice_able || true}
+          refreshConversations={fetchConversations}
         />
         {/* 回复列表弹窗 */}
         {showReplyList && (
@@ -1715,6 +1882,118 @@ const ChatPage = () => {
                 )}
               </div>
             </div>
+          </div>
+        )}
+        {/* 会话右键菜单 */}
+        {conversationMenuPosition && (
+          <div style={{
+            position: 'fixed',
+            left: conversationMenuPosition.x,
+            top: conversationMenuPosition.y,
+            backgroundColor: 'white',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
+            borderRadius: '8px',
+            padding: '8px 0',
+            zIndex: 1000,
+            minWidth: '180px',
+            border: '1px solid #f0f0f0'
+          }}>
+            {/* 标记为已读/未读 */}
+            <div 
+              onClick={() => handleConversationMenuClick('markAsUnread')}
+              style={{
+                padding: '10px 16px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                color: '#333333',
+                fontWeight: '500'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(138, 43, 226, 0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              <ClockCircleOutlined style={{ fontSize: '16px', color: '#8A2BE2' }} />
+              标记为未读
+            </div>
+
+            {/* 置顶/取消置顶 */}
+            {rightClickedConversationId && (
+              <div 
+                onClick={() => handleConversationMenuClick('toggleTop')}
+                style={{
+                  padding: '10px 16px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  color: '#333333',
+                  fontWeight: '500'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(138, 43, 226, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                {conversations.find(c => c.id === rightClickedConversationId)?.is_top ? (
+                  <>
+                    <PushpinOutlined style={{ fontSize: '16px', color: '#ff4d4f' }} />
+                    取消置顶
+                  </>
+                ) : (
+                  <>
+                    <PushpinOutlined style={{ fontSize: '16px', color: '#8A2BE2' }} />
+                    置顶会话
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* 消息通知设置 */}
+            {rightClickedConversationId && (
+              <div 
+                onClick={() => handleConversationMenuClick('toggleNotification')}
+                style={{
+                  padding: '10px 16px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  color: '#333333',
+                  fontWeight: '500'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(138, 43, 226, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                {conversations.find(c => c.id === rightClickedConversationId)?.notice_able ? (
+                  <>
+                    <BellOutlined style={{ fontSize: '16px', color: '#ff4d4f' }} />
+                    设为免打扰
+                  </>
+                ) : (
+                  <>
+                    <BellOutlined style={{ fontSize: '16px', color: '#8A2BE2' }} />
+                    开启消息通知
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
       </Layout>

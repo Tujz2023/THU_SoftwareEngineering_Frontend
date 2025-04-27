@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Drawer, List, Avatar, Typography, message, Spin, Divider, Tag, Empty, Input, Dropdown, Button, Modal, Form, Upload, Checkbox, Radio } from "antd";
+import { Drawer, List, Avatar, Typography, message, Spin, Divider, Tag, Empty, Input, Dropdown, Button, Modal, Form, Upload, Checkbox, Radio, Switch } from "antd";
 import { UserOutlined, CrownOutlined, UserSwitchOutlined, SearchOutlined, TeamOutlined, SettingOutlined, MoreOutlined, EditOutlined, UploadOutlined, NotificationOutlined, DeleteOutlined, PlusOutlined, UserAddOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { Friend } from "../utils/types";
 import Cookies from "js-cookie";
@@ -27,9 +27,12 @@ interface ChatInfoDrawerProps {
   isGroup: boolean;
   groupName?: string;     // 从chat.tsx传入的群聊名称
   groupAvatar?: string;   // 从chat.tsx传入的群聊头像
+  isTop: boolean;         // 新增：是否置顶
+  noticeAble: boolean;    // 新增：是否通知（免打扰相反）
+  refreshConversations: () => void; // 新增：刷新会话列表的回调函数
 }
 
-const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, groupAvatar }: ChatInfoDrawerProps) => {
+const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, groupAvatar, isTop, noticeAble, refreshConversations }: ChatInfoDrawerProps) => {
   const [memberloading, setmemberLoading] = useState(false);
   const [members, setMembers] = useState<ChatMember[]>([]);
   const [userIdentity, setUserIdentity] = useState<number>(3); // 默认为普通成员
@@ -74,6 +77,11 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
   const [invitationLoading, setInvitationLoading] = useState(false);
   const [processingInviteId, setProcessingInviteId] = useState<number | undefined>(undefined);
 
+  // 添加管理置顶和免打扰的状态
+  const [topState, setTopState] = useState<boolean>(isTop);
+  const [notificationState, setNotificationState] = useState<boolean>(noticeAble);
+  const [settingLoading, setSettingLoading] = useState(false);
+
   // 初始化群组信息
   useEffect(() => {
     if (groupName || groupAvatar) {
@@ -83,6 +91,12 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       });
     }
   }, [groupName, groupAvatar]);
+
+  // 当props变化时更新本地状态
+  useEffect(() => {
+    setTopState(isTop);
+    setNotificationState(noticeAble);
+  }, [isTop, noticeAble]);
 
   // 获取群聊成员列表
   const fetchChatMembers = async () => {
@@ -604,6 +618,69 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     }
   };
 
+  // 更新会话设置
+  const updateConversationSettings = async (settingType: 'ontop' | 'notification', value: boolean) => {
+    if (!conversationId) {
+      messageApi.error("请选择一个聊天");
+      return;
+    }
+    
+    setSettingLoading(true);
+    const token = Cookies.get("jwtToken");
+    
+    const requestBody: {
+      conversationId: number;
+      ontop?: boolean;
+      notification?: boolean;
+      unreads?: boolean;
+    } = {
+      conversationId
+    };
+    
+    if (settingType === 'ontop') {
+      requestBody.ontop = value;
+    } else if (settingType === 'notification') {
+      requestBody.notification = value;
+    }
+    
+    try {
+      const response = await fetch("/api/interface", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const res = await response.json();
+      
+      if (res.code === 0) {
+        messageApi.success(`${settingType === 'ontop' ? '置顶' : '通知'}设置已更新`);
+        
+        // 更新本地状态
+        if (settingType === 'ontop') {
+          setTopState(value);
+        } else if (settingType === 'notification') {
+          setNotificationState(value);
+        }
+        
+        // 刷新会话列表
+        refreshConversations();
+      } else if (res.code === -2) {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+      } else {
+        messageApi.error(res.info || "设置更新失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    } finally {
+      setSettingLoading(false);
+    }
+  };
+
   // 当抽屉可见时，获取相关数据
   useEffect(() => {
     if (visible) {
@@ -927,6 +1004,44 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                     setIsGroupInfoModalVisible(true);
                   }
                 }
+              },
+              // 新增置顶设置
+              {
+                key: 'topSetting',
+                title: '置顶聊天',
+                content: (
+                  <div style={{ marginTop: "8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Text type="secondary">
+                      {topState ? "已置顶此会话" : "未置顶此会话"}
+                    </Text>
+                    <Switch 
+                      checked={topState} 
+                      onChange={(checked) => updateConversationSettings('ontop', checked)}
+                      loading={settingLoading}
+                      style={{ backgroundColor: topState ? '#8A2BE2' : undefined }}
+                    />
+                  </div>
+                ),
+                clickable: false
+              },
+              // 新增免打扰设置
+              {
+                key: 'notificationSetting',
+                title: '消息通知',
+                content: (
+                  <div style={{ marginTop: "8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Text type="secondary">
+                      {notificationState ? "接收新消息通知" : "消息免打扰"}
+                    </Text>
+                    <Switch 
+                      checked={notificationState} 
+                      onChange={(checked) => updateConversationSettings('notification', checked)}
+                      loading={settingLoading}
+                      style={{ backgroundColor: notificationState ? '#8A2BE2' : undefined }}
+                    />
+                  </div>
+                ),
+                clickable: false
               },
             ]}
             renderItem={item => (
@@ -1454,7 +1569,97 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     );
   };
 
-  // 渲染当前选中的内容
+  // 增强非群聊会话的设置项
+  const renderPrivateChatSettings = () => {
+    return (
+      <div style={{ padding: "16px 24px" }}>
+        <Title level={5} style={{ margin: 0, marginBottom: "16px", color: "#8A2BE2" }}>私聊设置</Title>
+        
+        <List
+          itemLayout="vertical"
+          dataSource={[
+            {
+              key: 'contactInfo',
+              title: '联系人',
+              content: (
+                <div style={{ marginTop: "8px" }}>
+                  {members.length > 0 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px", backgroundColor: "rgba(138, 43, 226, 0.05)", borderRadius: "8px" }}>
+                      <Avatar src={members[0].avatar} size={46} />
+                      <div>
+                        <Text strong style={{ fontSize: "15px", display: "block", marginBottom: "4px" }}>
+                          {members[0].name}
+                        </Text>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ),
+              clickable: false
+            },
+            // 置顶设置
+            {
+              key: 'topSetting',
+              title: '置顶聊天',
+              content: (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px" }}>
+                  <Text type="secondary">
+                    {topState ? "已置顶此会话" : "未置顶此会话"}
+                  </Text>
+                  <Switch 
+                    checked={topState} 
+                    onChange={(checked) => updateConversationSettings('ontop', checked)}
+                    loading={settingLoading}
+                    style={{ backgroundColor: topState ? '#8A2BE2' : undefined }}
+                  />
+                </div>
+              ),
+              clickable: false
+            },
+            // 免打扰设置
+            {
+              key: 'notificationSetting',
+              title: '消息通知',
+              content: (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px" }}>
+                  <Text type="secondary">
+                    {notificationState ? "接收新消息通知" : "消息免打扰"}
+                  </Text>
+                  <Switch 
+                    checked={notificationState} 
+                    onChange={(checked) => updateConversationSettings('notification', checked)}
+                    loading={settingLoading}
+                    style={{ backgroundColor: notificationState ? '#8A2BE2' : undefined }}
+                  />
+                </div>
+              ),
+              clickable: false
+            }
+          ]}
+          renderItem={item => (
+            <List.Item
+              style={{
+                padding: "16px",
+                borderRadius: "8px",
+                backgroundColor: "white",
+                marginBottom: "12px",
+                cursor: item.clickable ? "pointer" : "default",
+                border: "1px solid rgba(138, 43, 226, 0.1)",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.03)"
+              }}
+            >
+              <List.Item.Meta
+                title={<Text strong>{item.title}</Text>}
+                description={item.content}
+              />
+            </List.Item>
+          )}
+        />
+      </div>
+    );
+  };
+
+  // 更新渲染内容函数
   const renderContent = () => {
     if (isGroup) {
       switch (activeMenu) {
@@ -1470,7 +1675,8 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
           return renderMemberList();
       }
     } else {
-      return renderMemberList();
+      // 非群聊使用新的私聊设置渲染
+      return renderPrivateChatSettings();
     }
   };
 
@@ -1595,42 +1801,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
           </div>
         ) : (
           <div style={{ height: "100%", backgroundColor: "white" }}>
-            {memberloading ? (
-              <div style={{ display: "flex", justifyContent: "center", padding: "32px 0" }}>
-                <Spin />
-              </div>
-            ) : members.length > 0 ? (
-              <div style={{ padding: "16px 24px" }}>
-                <Title level={5} style={{ margin: 0, marginBottom: "16px", color: "#8A2BE2" }}>联系人</Title>
-                
-                <List>
-                  <List.Item
-                    style={{
-                      padding: "12px 8px",
-                      borderRadius: "8px",
-                      border: "none",
-                      backgroundColor: "rgba(138, 43, 226, 0.05)"
-                    }}
-                  >
-                    <List.Item.Meta
-                      avatar={<Avatar src={members[0].avatar} size={50} />}
-                      title={
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <Text strong style={{ fontSize: "16px" }}>{members[0].name}</Text>
-                        </div>
-                      }
-                    />
-                  </List.Item>
-                </List>
-              </div>
-            ) : (
-              <Empty 
-                description="无法获取联系人信息" 
-                image={Empty.PRESENTED_IMAGE_SIMPLE} 
-                style={{ margin: "60px 0" }}
-              />
-            )}
-            {/* TODO: 增加设置置顶&免打扰 */}
+            {renderContent()}
           </div>
         )}
       </Drawer>
