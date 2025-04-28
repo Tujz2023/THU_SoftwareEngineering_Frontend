@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Drawer, List, Avatar, Typography, message, Spin, Divider, Tag, Empty, Input, Dropdown, Button, Modal, Form, Upload, Checkbox, Radio, Switch } from "antd";
-import { UserOutlined, CrownOutlined, UserSwitchOutlined, SearchOutlined, TeamOutlined, SettingOutlined, MoreOutlined, EditOutlined, UploadOutlined, NotificationOutlined, DeleteOutlined, PlusOutlined, UserAddOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { UserOutlined, CrownOutlined, UserSwitchOutlined, SearchOutlined, TeamOutlined, SettingOutlined, MoreOutlined, EditOutlined, UploadOutlined, NotificationOutlined, DeleteOutlined, PlusOutlined, UserAddOutlined, CheckCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { Friend } from "../utils/types";
 import Cookies from "js-cookie";
 
@@ -30,9 +30,10 @@ interface ChatInfoDrawerProps {
   isTop: boolean;         // 新增：是否置顶
   noticeAble: boolean;    // 新增：是否通知（免打扰相反）
   refreshConversations: () => void; // 新增：刷新会话列表的回调函数
+  userId: number;
 }
 
-const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, groupAvatar, isTop, noticeAble, refreshConversations }: ChatInfoDrawerProps) => {
+const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, groupAvatar, isTop, noticeAble, refreshConversations, userId }: ChatInfoDrawerProps) => {
   const [memberloading, setmemberLoading] = useState(false);
   const [members, setMembers] = useState<ChatMember[]>([]);
   const [userIdentity, setUserIdentity] = useState<number>(3); // 默认为普通成员
@@ -81,6 +82,9 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
   const [topState, setTopState] = useState<boolean>(isTop);
   const [notificationState, setNotificationState] = useState<boolean>(noticeAble);
   const [settingLoading, setSettingLoading] = useState(false);
+
+  // 退出或者解散群聊
+  const [dissolveOrLeaveModalVisible, setDissolveOrLeaveModalVisible] = useState(false);
 
   // 初始化群组信息
   useEffect(() => {
@@ -279,7 +283,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       return;
     }
     
-    setLoadingAction(memberId);   // TODO: what's this
+    setLoadingAction(memberId);
     const token = Cookies.get("jwtToken");
 
     try {
@@ -821,6 +825,80 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     }
   };
 
+  const dissolveOrLeaveGroup = async() => {
+    if (!conversationId) {
+      messageApi.error("请选择一个聊天");
+      return;
+    }
+
+    const token = Cookies.get("jwtToken");
+
+    try {
+      const response = await fetch(`/api/conversations/member/remove`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+        body: JSON.stringify({
+          conversation_id: conversationId
+        }),
+      });
+
+      const res = await response.json();
+      
+      if (res.code === 0) {
+        messageApi.success(res.message || "操作成功");
+        setDissolveOrLeaveModalVisible(false);
+        onClose();
+        refreshConversations();
+      } else {
+        messageApi.error(res.info || "操作失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    }
+  }
+
+  const removeMember = async(memberId: number) => {
+    if (!conversationId) {
+      messageApi.error("请选择一个聊天");
+      return;
+    }
+
+    if (!memberId) {
+      messageApi.error("请选择一个用户");
+      return;
+    }
+
+    const token = Cookies.get("jwtToken");
+
+    try {
+      const response = await fetch(`/api/conversations/member/remove`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          user: memberId
+        }),
+      });
+
+      const res = await response.json();
+      
+      if (res.code === 0) {
+        messageApi.success(res.message || "移除成功");
+        fetchChatMembers();
+      } else {
+        messageApi.error(res.info || "移除失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    }
+  }
+
   // 过滤成员列表
   const filteredMembers = members.filter(member => 
     member.name.toLowerCase().includes(searchText.toLowerCase())
@@ -909,16 +987,17 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                 <List.Item
                   style={{
                     padding: "12px 8px",
-                    cursor: "pointer",
                     borderRadius: "8px",
                     transition: "all 0.3s ease",
                     border: "none"
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "rgba(138, 43, 226, 0.05)";
+                    if (item.id !== userId)
+                      e.currentTarget.style.backgroundColor = "rgba(138, 43, 226, 0.05)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent";
+                    if (item.id !== userId)
+                      e.currentTarget.style.backgroundColor = "transparent";
                   }}
                   actions={
                     isGroup && userIdentity === 1 && item.identity !== 1 ? [
@@ -937,6 +1016,13 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                                 setTargetMember(item);
                                 setTransferModalVisible(true);
                               }
+                            },
+                            {
+                              key: 'removeMember',
+                              label: '移除成员',
+                              onClick: () => {
+                                removeMember(item.id);
+                              }
                             }
                           ]
                         }}
@@ -947,11 +1033,38 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                           loading={loadingAction === item.id}
                         />
                       </Dropdown>
-                    ] : []
+                    ] : [
+                      isGroup && userIdentity === 2 && item.identity === 3 ? [
+                        <Dropdown
+                        menu={{
+                          items: [
+                            {
+                              key: 'removeMember',
+                              label: '移除成员',
+                              onClick: () => {
+                                removeMember(item.id);
+                              }
+                            }
+                          ]
+                        }}
+                      >
+                        <Button 
+                          type="text" 
+                          icon={<MoreOutlined />} 
+                          loading={loadingAction === item.id}
+                        />
+                      </Dropdown>
+                      ] : []
+                    ]
                   }
                 >
                   <List.Item.Meta
-                    avatar={<Avatar src={item.avatar} size={46} />}
+                    avatar={<Avatar 
+                              src={item.avatar} 
+                              size={46} 
+                              onClick={() => {if (item.id !== userId) messageApi.info("你点击了一个用户")}} // TODO: 改为使用search_user_detail api
+                              style={{ cursor: item.id === userId ? "default" : "pointer" }}
+                            />}
                     title={
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <Text strong style={{ fontSize: "15px" }}>{item.name}</Text>
@@ -1031,13 +1144,13 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                 content: (
                   <div style={{ marginTop: "8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <Text type="secondary">
-                      {notificationState ? "接收新消息通知" : "消息免打扰"}
+                      {notificationState ? "未开启免打扰" : "已开启消息免打扰"}
                     </Text>
                     <Switch 
-                      checked={notificationState} 
-                      onChange={(checked) => updateConversationSettings('notification', checked)}
+                      checked={!notificationState} 
+                      onChange={(checked) => updateConversationSettings('notification', !checked)}
                       loading={settingLoading}
-                      style={{ backgroundColor: notificationState ? '#8A2BE2' : undefined }}
+                      style={{ backgroundColor: !notificationState ? '#8A2BE2' : undefined }}
                     />
                   </div>
                 ),
@@ -1069,47 +1182,55 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
           />
         </div>
 
-        {userIdentity === 1 && (
-          <div style={{ marginTop: "32px" }}>
-            <Title level={5} style={{ color: "red", marginBottom: "16px" }}>其他操作</Title>
-            <List
-              itemLayout="horizontal"
-              dataSource={[
-                {
-                  key: 'dissolveGroup',
-                  title: '解散群聊',
-                  content: (
-                    <Text type="secondary" style={{ marginTop: "8px", display: "block" }}>
-                      群聊被解散后，所有聊天记录将被清除
-                    </Text>
-                  ),
-                  onClick: () => messageApi.warning("解散群聊功能尚未实现")
-                }
-              ]}
-              renderItem={item => (
-                <List.Item
-                  style={{
-                    padding: "16px",
-                    borderRadius: "8px",
-                    backgroundColor: "rgba(255, 0, 0, 0.05)",
-                    // cursor: "pointer",
-                    border: "none" // 移除边框，解决黑点问题
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <Button 
-                      type="primary"
-                      danger
-                      onClick={item.onClick}>{item.title}</Button>
-                    <Text type="secondary" style={{ marginLeft: "16px" }}>
-                      {item.content}
-                    </Text>
-                  </div>
-                </List.Item>
-              )}
-            />
-          </div>
-        )}
+        <div style={{ marginTop: "32px" }}>
+          <Title level={5} style={{ color: "red", marginBottom: "16px" }}>其他操作</Title>
+          <List
+            itemLayout="horizontal"
+            dataSource={[
+              userIdentity === 1 ? (
+              {
+                key: 'dissolveGroup',
+                title: '解散群聊',
+                content: (
+                  <Text type="secondary" style={{ marginTop: "8px", display: "block" }}>
+                    群聊被解散后，所有聊天记录将被清除
+                  </Text>
+                ),
+                onClick: () => setDissolveOrLeaveModalVisible(true)
+              }) : ({
+                key: 'leaveGroup',
+                title: '退出群聊',
+                content: (
+                  <Text type="secondary" style={{ marginTop: "8px", display: "block" }}>
+                    退出群聊后，将无法查看群聊中的消息
+                  </Text>
+                ),
+                onClick: () => setDissolveOrLeaveModalVisible(true)
+              })
+            ]}
+            renderItem={item => (
+              <List.Item
+                style={{
+                  padding: "16px",
+                  borderRadius: "8px",
+                  backgroundColor: "rgba(255, 0, 0, 0.05)",
+                  // cursor: "pointer",
+                  border: "none" // 移除边框，解决黑点问题
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <Button 
+                    type="primary"
+                    danger
+                    onClick={item.onClick}>{item.title}</Button>
+                  <Text type="secondary" style={{ marginLeft: "16px" }}>
+                    {item.content}
+                  </Text>
+                </div>
+              </List.Item>
+            )}
+          />
+        </div>
       </div>
     );
   };
@@ -1324,34 +1445,6 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
 
   // 渲染群邀请内容
   const renderInvitations = () => {
-    // 如果不是群主或管理员，显示没有权限
-    if (userIdentity > 2) {
-      return (
-        <div style={{ padding: "40px 24px", textAlign: "center" }}>
-          <Empty
-            image={
-              <div style={{ 
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                marginBottom: "20px" 
-              }}>
-                <UserAddOutlined style={{ 
-                  fontSize: "48px", 
-                  color: "rgba(138, 43, 226, 0.3)"
-                }} />
-              </div>
-            }
-            description={
-              <Text type="secondary" style={{ fontSize: "16px" }}>
-                只有群主或管理员可以查看和处理邀请
-              </Text>
-            }
-          />
-        </div>
-      );
-    }
-
     return (
       <div style={{ padding: "16px 24px" }}>
         <div style={{
@@ -1360,7 +1453,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
           alignItems: "center",
           marginBottom: "20px"
         }}>
-          <Title level={5} style={{ margin: 0, color: "#8A2BE2" }}>待处理邀请</Title>
+          <Title level={5} style={{ margin: 0, color: "#8A2BE2" }}>邀请列表</Title>
           <Button 
             type="text" 
             icon={<div style={{ transform: "rotate(90deg)" }}>↻</div>} 
@@ -1469,45 +1562,19 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
 
                   {/* 操作按钮或状态标签 */}
                   <div>
-                    {item.status === 0 ? (
+                    {userIdentity > 2 ? (
                       <div style={{ 
-                        display: "flex", 
-                        justifyContent: "flex-end", 
-                        gap: "12px",
-                      }}>
-                        <Button 
-                          danger
-                          size="middle"
-                          onClick={() => handleInvitation(item.invite_id, false)}
-                          loading={processingInviteId === item.invite_id}
-                          disabled={processingInviteId !== undefined && processingInviteId !== item.invite_id}
-                        >
-                          拒绝
-                        </Button>
-                        <Button 
-                          type="primary" 
-                          size="middle"
-                          style={{ 
-                            background: "#8A2BE2", 
-                            borderColor: "#8A2BE2" 
-                          }}
-                          onClick={() => handleInvitation(item.invite_id, true)}
-                          loading={processingInviteId === item.invite_id}
-                          disabled={processingInviteId !== undefined && processingInviteId !== item.invite_id}
-                        >
-                          同意
-                        </Button>
-                      </div>
-                    ) : (
-                      <div style={{ 
-                        textAlign: "right"
-                      }}>
+                          textAlign: "right"
+                        }}>
                         <Tag color={
+                          item.status === 0 ? "processing" : 
                           item.status === 1 ? "error" : // 已拒绝
                           item.status === 2 ? "success" : // 已同意
+                          item.status === 3 ? "green" : 
                           "default" // 其他状态
                         }>
                           {
+                            item.status === 0 ? "等待审核" : 
                             item.status === 1 ? "已拒绝" : 
                             item.status === 2 ? "已同意" : 
                             item.status === 3 ? "用户已在群中" :
@@ -1515,7 +1582,53 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
                           }
                         </Tag>
                       </div>
-                    )}
+                      ) : (item.status === 0 ? (
+                        <div style={{ 
+                          display: "flex", 
+                          justifyContent: "flex-end", 
+                          gap: "12px",
+                        }}>
+                          <Button 
+                            danger
+                            size="middle"
+                            onClick={() => handleInvitation(item.invite_id, false)}
+                            loading={processingInviteId === item.invite_id}
+                            disabled={processingInviteId !== undefined && processingInviteId !== item.invite_id}
+                          >
+                            拒绝
+                          </Button>
+                          <Button 
+                            type="primary" 
+                            size="middle"
+                            style={{ 
+                              background: "#8A2BE2", 
+                              borderColor: "#8A2BE2" 
+                            }}
+                            onClick={() => handleInvitation(item.invite_id, true)}
+                            loading={processingInviteId === item.invite_id}
+                            disabled={processingInviteId !== undefined && processingInviteId !== item.invite_id}
+                          >
+                            同意
+                          </Button>
+                        </div>
+                      ) : (
+                        <div style={{ 
+                          textAlign: "right"
+                        }}>
+                          <Tag color={
+                            item.status === 1 ? "error" : // 已拒绝
+                            item.status === 2 ? "success" : // 已同意
+                            "default" // 其他状态
+                          }>
+                            {
+                              item.status === 1 ? "已拒绝" : 
+                              item.status === 2 ? "已同意" : 
+                              item.status === 3 ? "用户已在群中" :
+                              "未知状态"
+                            }
+                          </Tag>
+                        </div>
+                    ))}
                   </div>
                 </div>
               </List.Item>
@@ -1623,13 +1736,13 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
               content: (
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px" }}>
                   <Text type="secondary">
-                    {notificationState ? "接收新消息通知" : "消息免打扰"}
+                    {notificationState ? "未开启免打扰" : "已开启消息免打扰"}
                   </Text>
                   <Switch 
-                    checked={notificationState} 
-                    onChange={(checked) => updateConversationSettings('notification', checked)}
+                    checked={!notificationState} 
+                    onChange={(checked) => updateConversationSettings('notification', !checked)}
                     loading={settingLoading}
-                    style={{ backgroundColor: notificationState ? '#8A2BE2' : undefined }}
+                    style={{ backgroundColor: !notificationState ? '#8A2BE2' : undefined }}
                   />
                 </div>
               ),
@@ -1700,7 +1813,6 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
             borderBottom: "none"
           }
         }}
-        headerStyle={{ color: "white" }}
         closeIcon={<div style={{ color: "white", fontSize: "16px" }}>✕</div>}
       >
         {isGroup ? (
@@ -2238,6 +2350,107 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
               style={{ margin: "40px 0" }}
             />
           )}
+        </div>
+      </Modal>
+
+      {/* 退出或者解散群聊模态框 */}
+      <Modal
+        title={
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            color: 'red',
+            fontSize: '18px',
+            fontWeight: '500'
+          }}>
+            <WarningOutlined style={{ marginRight: '12px', fontSize: '20px' }} />
+            {userIdentity === 1 ? (
+              <span>解散群聊</span>
+            ) : (
+              <span>退出群聊</span>
+            )}
+          </div>
+        }
+        open={dissolveOrLeaveModalVisible}
+        onCancel={() => {
+          setDissolveOrLeaveModalVisible(false);
+        }}
+        footer={[]}
+        styles={{
+          mask: { backdropFilter: 'blur(4px)', background: 'rgba(0,0,0,0.45)' },
+          header: { 
+            borderBottom: '1px solid rgba(138, 43, 226, 0.1)',
+            padding: '16px 24px'
+          },
+          body: {
+            padding: '24px'
+          }
+        }}
+        style={{ marginTop: '50px' }}
+      >
+        <div style={{ 
+          margin: "0",
+          display: "flex",
+          flexDirection: "column",
+          gap: "20px"
+        }}>
+          <div>
+            <div style={{ 
+              marginBottom: "12px", 
+              display: "flex", 
+              justifyContent: "center",
+              alignItems: "center"
+            }}>
+              {userIdentity === 1 ? (
+                <Text style={{ fontSize: "15px", fontWeight: "500", color: "red" }}>
+                  该操作不可逆，请确认是否解散群聊
+                </Text>
+              ) : (
+                <Text style={{ fontSize: "15px", fontWeight: "500", color: "red" }}>
+                  该操作不可逆，请确认是否退出群聊
+                </Text>
+              )}
+            </div>
+          </div>
+
+          <div style={{ 
+            display: "flex", 
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: "8px"
+          }}>
+            <Button 
+              onClick={() => {
+                setDissolveOrLeaveModalVisible(false);
+              }}
+              style={{ 
+                padding: "0 16px",
+                height: "40px"
+              }}
+            >
+              取消
+            </Button>
+
+            <Button 
+              type="primary" 
+              onClick={dissolveOrLeaveGroup}
+              style={{ 
+                background: "red",
+                height: "40px",
+                padding: "0 24px",
+                borderRadius: "6px",
+                boxShadow: !notificationContent.trim() 
+                  ? "none" 
+                  : "0 4px 12px rgba(138, 43, 226, 0.2)",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px"
+              }}
+            >
+              <WarningOutlined />
+              确认
+            </Button>
+          </div>
         </div>
       </Modal>
     </>

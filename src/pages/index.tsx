@@ -26,7 +26,6 @@ const WelcomePage = () => {
       setInitialLoading(false);
       setIsAuthenticated(true);
       router.push('/chat').then(() => setShowAlert(true));
-      console.log(initialLoading);
     } else {
       setIsAuthenticated(false);
       // 短暂延迟以显示加载动画
@@ -249,7 +248,11 @@ const WelcomePage = () => {
                 border: 'none',
                 overflow: 'hidden',
               }}
-              bodyStyle={{ padding: '2rem' }}
+              styles={{
+                body: {
+                  padding: '2rem'
+                }
+              }}
             >
               <Title level={3} style={{ textAlign: 'center', marginBottom: '1.5rem', color: '#333' }}>
                 欢迎回来

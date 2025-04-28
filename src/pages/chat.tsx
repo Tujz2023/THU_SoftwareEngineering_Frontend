@@ -332,8 +332,8 @@ const ChatPage = () => {
         // 仅在应该滚动且消息非空的情况下滚动到底部
         if (shouldScroll && formattedMessages.length > 0) {
           setTimeout(scrollToBottom, 100); // 稍微延迟确保 DOM 已更新
-          setLoadingMessage(false);
         }
+        setLoadingMessage(false);
         
         // 在成功获取消息后刷新会话列表，因为未读消息数会变化
         fetchConversations();
@@ -538,12 +538,12 @@ const ChatPage = () => {
   // 修改会话点击处理函数
   const handleConversationClick = (conversationId: number) => {
     // 如果点击的是当前已选中的会话，刷新该会话的消息
-  if (conversationId === selectedConversationId) {
-    setLoadingMessage(true);
-    setMessages([]); // 清空消息，显示加载状态
-    fetchMessages(conversationId); // 重新获取消息
-    return;
-  }
+    if (conversationId === selectedConversationId) {
+      // setLoadingMessage(true);
+      // setMessages([]); // 清空消息，显示加载状态
+      fetchMessages(conversationId, undefined, false); // 重新获取消息
+      return;
+    }
     setLoadingMessage(true);
     setMessages([]);
     setSelectedConversationId(conversationId);
@@ -1696,6 +1696,7 @@ const ChatPage = () => {
           isTop={conversations.find((c) => c.id === selectedConversationId)?.is_top || false}
           noticeAble={conversations.find((c) => c.id === selectedConversationId)?.notice_able || true}
           refreshConversations={fetchConversations}
+          userId={userInfo.id}
         />
         {/* 回复列表弹窗 */}
         {showReplyList && (

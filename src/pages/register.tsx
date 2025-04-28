@@ -32,7 +32,6 @@ const RegisterPage = () => {
         setInitialLoading(false);
         setIsAuthenticated(true);
         router.push('/chat').then(() => setShowAlert(true));
-        console.log(initialLoading);
       } else {
         setIsAuthenticated(false);
         // 短暂延迟以显示加载动画
