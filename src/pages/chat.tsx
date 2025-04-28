@@ -1266,8 +1266,14 @@ const ChatPage = () => {
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap'
                               }}>
-                                {/* {messages.find(m => m.id === msg.reply_to_id)?.content || msg.reply_to || "原消息不可用"} */}
-                                {msg.reply_to_type === 0 ? msg.reply_to : 
+                                {msg.reply_to_type === 0 ? (
+                                    msg.reply_to?.split('\n').map((line, index) => (
+                                      <span key={index}>
+                                        {line}
+                                        <br />
+                                      </span>
+                                    ))
+                                  ) : 
                                   <img src={msg.reply_to} alt="回复图片" style={{ maxWidth: '100%', maxHeight: '100px' }} />
                                 }
                               </div>
@@ -1282,7 +1288,14 @@ const ChatPage = () => {
                               fontSize: '15px',
                               lineHeight: '1.5',
                               wordBreak: 'break-word'
-                            }}>{msg.content}</p>
+                            }}>
+                              {msg.content.split('\n').map((line, index) => (
+                                <span key={index}>
+                                  {line}
+                                  <br />
+                                </span>
+                              ))}
+                            </p>
                           ) : msg.type === 1 ? (
                             // 图片消息
                             <img 
@@ -1529,7 +1542,12 @@ const ChatPage = () => {
                     {replyToMessage.type === 1 ? (
                       <img src={replyToMessage.content} alt="回复图片" style={{ maxWidth: '100%', maxHeight: '100px' }} />
                     ) : (
-                      replyToMessage.content
+                      replyToMessage.content.split('\n').map((line, index) => (
+                        <span key={index}>
+                          {line}
+                          <br />
+                        </span>
+                      ))
                     )}
                     </div>
                   </div>
