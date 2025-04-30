@@ -1010,6 +1010,32 @@ const ChatPage = () => {
                         transition: "all 0.3s ease",
                         boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
                       }}
+
+                      onMouseEnter={(e) => {
+                        if (selectedConversationId !== conversation.id) {
+                          e.currentTarget.style.background = "#f9f9ff";
+                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.08)";
+                          e.currentTarget.style.transform = "translateY(-2px)";
+                          e.currentTarget.style.border = "1px solid rgba(138, 43, 226, 0.15)";
+                        } else {
+                          e.currentTarget.style.background = "rgba(138, 43, 226, 0.15)";
+                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(138, 43, 226, 0.15)";
+                          e.currentTarget.style.transform = "translateY(-2px)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (selectedConversationId !== conversation.id) {
+                          e.currentTarget.style.background = "white";
+                          e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.03)";
+                          e.currentTarget.style.transform = "translateY(0)";
+                          e.currentTarget.style.border = "1px solid transparent";
+                        } else {
+                          e.currentTarget.style.background = "rgba(138, 43, 226, 0.1)";
+                          e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.03)";
+                          e.currentTarget.style.transform = "translateY(0)";
+                          e.currentTarget.style.border = "1px solid rgba(138, 43, 226, 0.3)";
+                        }
+                      }}
                     >
                       <List.Item.Meta
                         avatar={
@@ -1229,9 +1255,34 @@ const ChatPage = () => {
                             border: msg.sender === "me"
                               ? "none"
                               : "1px solid rgba(0, 0, 0, 0.05)",
-                            cursor: "context-menu"
+                            cursor: "context-menu",
+                            transition : "all 0.2s ease",
                           }}
                           onContextMenu={(e) => handleMessageRightClick(e, msg)}
+                          onMouseEnter={(e) => {
+                            // 鼠标悬停效果
+                            if (msg.sender === "me") {
+                              e.currentTarget.style.background = "linear-gradient(135deg, #A64CEB, #9535E0)";
+                              e.currentTarget.style.boxShadow = "0 4px 12px rgba(138, 43, 226, 0.4)";
+                              e.currentTarget.style.transform = "translateY(-2px)";
+                            } else {
+                              e.currentTarget.style.background = "#f9f9ff";
+                              e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.12)";
+                              e.currentTarget.style.transform = "translateY(-2px)";
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            // 恢复原始样式
+                            if (msg.sender === "me") {
+                              e.currentTarget.style.background = "linear-gradient(135deg, #9F4BDF, #8A2BE2)";
+                              e.currentTarget.style.boxShadow = "0 2px 10px rgba(138, 43, 226, 0.25)";
+                              e.currentTarget.style.transform = "translateY(0)";
+                            } else {
+                              e.currentTarget.style.background = "#fff";
+                              e.currentTarget.style.boxShadow = "0 2px 10px rgba(0, 0, 0, 0.08)";
+                              e.currentTarget.style.transform = "translateY(0)";
+                            }
+                          }}
                         >
                           {/* 群聊中且不是自己的消息时，显示发送者姓名 */}
                           {conversations.find(c => c.id === selectedConversationId)?.is_chat_group && 
