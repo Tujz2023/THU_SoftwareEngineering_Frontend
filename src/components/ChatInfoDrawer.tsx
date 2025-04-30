@@ -177,8 +177,8 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
   };
 
   // 添加获取用户详情的函数
-  const fetchUserDetail = async (user_id: number) => {
-    if (user_id === undefined) {
+  const fetchUserDetail = async (userId: number) => {
+    if (userId === undefined) {
       messageApi.error("用户ID不存在");
       return;
     }
@@ -188,7 +188,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
 
     try {
       // 使用查询参数而不是请求体
-      const response = await fetch(`/api/search_user_detail?userId=${user_id}`, {
+      const response = await fetch(`/api/search_user_detail?userId=${userId}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -201,7 +201,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       if (res.code === 0) {
         setUserDetail(
           {
-            id: user_id,
+            id: userId,
             name: res.user.name,
             email: res.user.email,
             avatar: res.user.avatar,
