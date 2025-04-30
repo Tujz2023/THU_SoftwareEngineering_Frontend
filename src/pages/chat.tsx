@@ -271,16 +271,15 @@ const ChatPage = () => {
       const res = await response.json();
       if (res.code === 0) {
         setConversations(res.conversation);
+        console.log(res.conversation);
         const conversationExists = res.conversation.some((conv: Conversation) => conv.id === selectedConversationId);
         if (!conversationExists) {
           setSelectedConversationId(0); // 如果不存在，则将selectedConversationId置为空
         }
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
-          router.push("/");
-        });
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else {
         messageApi.error(res.info || "获取会话列表失败");
       }
@@ -292,7 +291,7 @@ const ChatPage = () => {
   };
 
   // 在 fetchMessages 函数中增加参数来控制是否需要滚动到底部
-  const fetchMessages = async (conversationId: number, fromTime?: string, shouldScroll: boolean = true) => {
+  const fetchMessages = async (conversationId: number, shouldScroll: boolean = true, fromTime?: string ) => {
     try {
       // 构建请求URL，支持从特定时间开始获取消息
       const url = `/api/conversations/messages?conversationId=${conversationId}`;
@@ -337,12 +336,10 @@ const ChatPage = () => {
         
         // 在成功获取消息后刷新会话列表，因为未读消息数会变化
         fetchConversations();
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
-          router.push("/");
-        });
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else {
         messageApi.error(res.info || "获取消息失败");
       }
@@ -369,12 +366,10 @@ const ChatPage = () => {
       if (res.code === 0) {
         setReadList(res.read_users);
         setShowReadList(true);
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
-          router.push("/");
-        });
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else {
         messageApi.error(res.info || "获取已读列表失败");
       }
@@ -401,7 +396,7 @@ const ChatPage = () => {
     } //删除需要的函数
     else if (param === 1) {
       if (selectedConversationId) {
-        fetchMessages(selectedConversationId, undefined, false);
+        fetchMessages(selectedConversationId, false, undefined);
       }
       else {
         fetchConversations();
@@ -479,12 +474,10 @@ const ChatPage = () => {
         // 发送消息之后notify会发送websocket消息，因此不需要前端更新
         setInput("");
         setReplyToMessage(undefined); // 清除回复状态
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
-          router.push("/");
-        });
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else {
         messageApi.error(res.info || "发送消息失败");
       }
@@ -509,12 +502,10 @@ const ChatPage = () => {
         setReplyList(res.replies);
         setShowReplyList(true);
         // setReplyListMessageId(messageId);
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
-          router.push("/");
-        });
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else {
         messageApi.error(res.info || "获取回复列表失败");
       }
@@ -530,7 +521,7 @@ const ChatPage = () => {
       setIsFirstLoad(true); // 重置为首次加载状态
       // fetchMessages(selectedConversationId, undefined, true);
       setTimeout(() => {
-        fetchMessages(selectedConversationId, undefined, true); // true 表示需要自动滚动
+        fetchMessages(selectedConversationId, true, undefined); // true 表示需要自动滚动
       }, 0);
     }
   }, [selectedConversationId]);
@@ -541,7 +532,7 @@ const ChatPage = () => {
     if (conversationId === selectedConversationId) {
       // setLoadingMessage(true);
       // setMessages([]); // 清空消息，显示加载状态
-      fetchMessages(conversationId, undefined, false); // 重新获取消息
+      fetchMessages(conversationId, false, undefined); // 重新获取消息
       return;
     }
     setLoadingMessage(true);
@@ -623,12 +614,10 @@ const ChatPage = () => {
       if (res.code === 0) {
         messageApi.success("已标记为未读");
         fetchConversations(); // 刷新会话列表
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
-          router.push("/");
-        });
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else {
         messageApi.error(res.info || "操作失败");
       }
@@ -679,12 +668,10 @@ const ChatPage = () => {
       if (res.code === 0) {
         messageApi.success(isTop ? "会话已置顶" : "会话已取消置顶");
         fetchConversations(); // 刷新会话列表
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
-          router.push("/");
-        });
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else {
         messageApi.error(res.info || "操作失败");
       }
@@ -715,12 +702,10 @@ const ChatPage = () => {
       if (res.code === 0) {
         messageApi.success(noticeAble ? "已开启消息通知" : "已设为免打扰");
         fetchConversations(); // 刷新会话列表
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
-          router.push("/");
-        });
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else {
         messageApi.error(res.info || "操作失败");
       }
@@ -1766,6 +1751,7 @@ const ChatPage = () => {
           noticeAble={conversations.find((c) => c.id === selectedConversationId)?.notice_able || true}
           refreshConversations={fetchConversations}
           userId={userInfo?.id}
+          fetchMessages={fetchMessages}
         />
         {/* 回复列表弹窗 */}
         {showReplyList && (

@@ -3,6 +3,7 @@ import { Drawer, List, Avatar, Typography, message, Spin, Divider, Tag, Empty, I
 import { UserOutlined, CrownOutlined, UserSwitchOutlined, SearchOutlined, TeamOutlined, SettingOutlined, MoreOutlined, EditOutlined, UploadOutlined, NotificationOutlined, DeleteOutlined, PlusOutlined, UserAddOutlined, CheckCircleOutlined, WarningOutlined, HistoryOutlined, FilterOutlined, MailOutlined } from "@ant-design/icons";
 import { Friend } from "../utils/types";
 import Cookies from "js-cookie";
+import { useRouter } from "next/router";
 
 const { Text, Title } = Typography;
 
@@ -42,9 +43,10 @@ interface ChatInfoDrawerProps {
   noticeAble: boolean;    // 新增：是否通知（免打扰相反）
   refreshConversations: () => void; // 新增：刷新会话列表的回调函数
   userId: number;
+  fetchMessages: (conversationId: number, shouldScroll: boolean, fromTime?: string) => void;
 }
 
-const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, groupAvatar, isTop, noticeAble, refreshConversations, userId }: ChatInfoDrawerProps) => {
+const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, groupAvatar, isTop, noticeAble, refreshConversations, userId, fetchMessages }: ChatInfoDrawerProps) => {
   const [memberloading, setmemberLoading] = useState(false);
   const [members, setMembers] = useState<ChatMember[]>([]);
   const [userIdentity, setUserIdentity] = useState<number>(3); // 默认为普通成员
@@ -52,7 +54,8 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
   const [searchText, setSearchText] = useState("");
   const [activeMenu, setActiveMenu] = useState("聊天成员");
   const [loadingAction, setLoadingAction] = useState<number | undefined>(undefined); // 用于标记当前正在操作的成员ID
-  
+  const router = useRouter();
+
   // 群信息编辑相关状态
   const [isGroupInfoModalVisible, setIsGroupInfoModalVisible] = useState(false);
   const [groupInfoForm] = Form.useForm();
@@ -162,10 +165,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
         if (isGroup) {
           setUserIdentity(res.identity);
         }
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else {
         messageApi.error(res.info || "获取聊天成员失败");
       }
@@ -212,10 +215,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
         // 默认设置添加好友的消息
         setAddFriendMessageText(`你好，我是群「${groupInfo.name || "当前群聊"}」的成员，请求添加你为好友。`);
         setUserDetailModalVisible(true);
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else if (res.code === -1) {
         messageApi.error("用户不存在");
       } else {
@@ -255,13 +258,13 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       
       if (res.code === 0) {
         messageApi.success(res.message || "好友申请已发送");
-        //setUserDetailModalVisible(false);
+        setUserDetailModalVisible(false);
         // 刷新用户信息
-        fetchUserDetail(targetId);
-      } else if (res.code === -2) {
+        // fetchUserDetail(targetId);
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else {
         messageApi.error(res.info || "发送好友申请失败");
       }
@@ -298,10 +301,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       
       if (res.code === 0) {
         setNotifications(res.notifications || []);
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else {
         messageApi.error(res.info || "获取群公告失败");
       }
@@ -334,10 +337,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
           !existingMemberIds.includes(friend.id) && !friend.deleted
         );
         setFriends(availableFriends);
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else {
         messageApi.error(res.info || "获取好友列表失败");
       }
@@ -377,10 +380,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
         messageApi.success(res.message || "邀请成功，等待管理员确认");
         setIsInviteModalVisible(false);
         setSelectedFriend(undefined);
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else if (res.code === -3) {
         messageApi.error("选择的好友已经是群成员");
       } else if (res.code === -4) {
@@ -434,10 +437,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
         messageApi.success("设置管理员成功");
         // 重新获取成员列表以更新UI
         fetchChatMembers();
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else {
         messageApi.error(res.info || "设置管理员失败");
       }
@@ -477,10 +480,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
         messageApi.success("解除管理员成功");
         // 重新获取成员列表以更新UI
         fetchChatMembers();
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else {
         messageApi.error(res.info || "解除管理员失败");
       }
@@ -528,10 +531,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
         // 重新获取成员列表
         fetchChatMembers();
         setTargetMember(undefined);
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else if (res.code === -3) {
         if (res.info === "非群主不能转让群主") {
           messageApi.error("你不是群主，无法转让群主身份");
@@ -589,10 +592,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
         setNotificationContent('');
         // 重新获取群公告
         fetchNotifications();
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else if (res.code === -3) {
         messageApi.error("你不是群主或管理员，无法发布群公告");
       } else {
@@ -633,10 +636,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
         messageApi.success(res.message || "删除群公告成功");
         // 从本地状态中移除已删除的公告
         setNotifications(prev => prev.filter(notification => notification.notification_id !== notificationId));
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else if (res.code === -3) {
         messageApi.error("你不是群主或管理员，无法删除群公告");
       } else if (res.code === -1) {
@@ -680,10 +683,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       
       if (res.code === 0) {
         setInvitations(res.invitations || []);
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else {
         messageApi.error(res.info || "获取群聊邀请列表失败");
       }
@@ -721,10 +724,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
           // 如果接受邀请，刷新成员列表
           fetchChatMembers();
         }
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else if (res.code === -3) {
         messageApi.error("非群主或管理员不能处理邀请");
       } else if (res.code === -4) {
@@ -800,10 +803,10 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
         
         // 刷新会话列表
         refreshConversations();
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else {
         messageApi.error(res.info || "设置更新失败");
       }
@@ -812,6 +815,19 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     } finally {
       setSettingLoading(false);
     }
+  };
+
+  const convertToDateTime = (isoString: string) => {
+    const date = new Date(isoString);
+  
+    const year = date.getUTCFullYear();
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+    const day = date.getUTCDate().toString().padStart(2, '0');
+    const hours = date.getUTCHours().toString().padStart(2, '0');
+    const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+    const seconds = date.getUTCSeconds().toString().padStart(2, '0');
+  
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   };
 
   // 筛选聊天记录
@@ -838,8 +854,8 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     
     // 如果有时间范围
     if (values.timeRange && values.timeRange.length === 2) {
-      requestBody.start_time = values.timeRange[0].toISOString();
-      requestBody.end_time = values.timeRange[1].toISOString();
+      requestBody.start_time = convertToDateTime(values.timeRange[0].toISOString());
+      requestBody.end_time = convertToDateTime(values.timeRange[1].toISOString());
     }
     
     // 如果选择了发送者
@@ -866,14 +882,17 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       
       if (res.code === 0) {
         setFilteredMessages(res.messages || []);
-        messageApi.success(`共找到 ${res.messages.length} 条消息`);
+        if (res.messages.length === 0 && messageSearchModalVisible === false)
+          messageApi.error(`未找到符合条件的消息`);
+        else if (res.messages.length !== 0)
+          messageApi.success(`共找到 ${res.messages.length} 条消息`);
         if (res.messages.length > 0) {
           setMessageSearchModalVisible(true);
         }
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else {
         messageApi.error(res.info || "筛选消息失败");
       }
@@ -914,10 +933,11 @@ const deleteMessages = async () => {
       searchMessages(messageSearchForm.getFieldsValue());
       // 清空选择
       setSelectedMessages([]);
-    } else if (res.code === -2) {
+      fetchMessages(conversationId, false, undefined);
+    } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
       Cookies.remove("jwtToken");
       Cookies.remove("userEmail");
-      messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+      messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
     } else if (res.code === -1) {
       messageApi.error("部分或全部消息不存在");
       // 重新获取筛选结果
@@ -1062,10 +1082,10 @@ const deleteMessages = async () => {
         setIsGroupInfoModalVisible(false);
         // 重新获取成员列表以及群信息
         // fetchChatMembers();
-      } else if (res.code === -2) {
+      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
-        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
       } else if (res.code === -3) {
         messageApi.error("非群主或管理员不能更新群信息");
       } else {
@@ -2900,7 +2920,6 @@ const deleteMessages = async () => {
           <Table 
             dataSource={filteredMessages} 
             rowKey="id"
-            pagination={{ pageSize: 10 }}
             rowSelection={{
               type: 'checkbox',
               selectedRowKeys: selectedMessages,
@@ -2928,7 +2947,14 @@ const deleteMessages = async () => {
                 render: (text: string, record: Message) => (
                   <div>
                     {record.type === 0 ? (
-                      <span>{text}</span>
+                      <div style={{wordBreak: 'break-word'}}>
+                        {text.split('\n').map((line, index) => (
+                          <span key={index}>
+                            {line}
+                            <br />
+                          </span>
+                        ))}
+                      </div>
                     ) : (
                       <div>
                         <Tag color="blue">图片</Tag>
