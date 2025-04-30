@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Drawer, List, Avatar, Typography, message, Spin, Divider, Tag, Empty, Input, Dropdown, Button, Modal, Form, Upload, Checkbox, Radio, Switch, DatePicker, Space, Table, Select} from "antd";
-import { UserOutlined, CrownOutlined, UserSwitchOutlined, SearchOutlined, TeamOutlined, SettingOutlined, MoreOutlined, EditOutlined, UploadOutlined, NotificationOutlined, DeleteOutlined, PlusOutlined, UserAddOutlined, CheckCircleOutlined, WarningOutlined, HistoryOutlined, FilterOutlined } from "@ant-design/icons";
+import { UserOutlined, CrownOutlined, UserSwitchOutlined, SearchOutlined, TeamOutlined, SettingOutlined, MoreOutlined, EditOutlined, UploadOutlined, NotificationOutlined, DeleteOutlined, PlusOutlined, UserAddOutlined, CheckCircleOutlined, WarningOutlined, HistoryOutlined, FilterOutlined, MailOutlined } from "@ant-design/icons";
 import { Friend } from "../utils/types";
 import Cookies from "js-cookie";
 
@@ -107,6 +107,18 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
   const [selectedMessages, setSelectedMessages] = useState<number[]>([]);
   const [deletingMessages, setDeletingMessages] = useState(false);
 
+  const [userDetailModalVisible, setUserDetailModalVisible] = useState(false);
+  const [userDetail, setUserDetail] = useState<{
+    id: number;
+    name: string;
+    email: string;
+    avatar: string;
+    is_deleted: boolean;
+    is_friend: boolean;
+  } | undefined>(undefined);
+  const [loadingUserDetail, setLoadingUserDetail] = useState(false);
+  const [addFriendMessageText, setAddFriendMessageText] = useState("");
+  const [sendingFriendRequest, setSendingFriendRequest] = useState(false);
 
   // 初始化群组信息
   useEffect(() => {
@@ -164,6 +176,101 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     }
   };
 
+  // 添加获取用户详情的函数
+  const fetchUserDetail = async (user_id: number) => {
+    if (user_id === undefined) {
+      messageApi.error("用户ID不存在");
+      return;
+    }
+    
+    setLoadingUserDetail(true);
+    const token = Cookies.get("jwtToken");
+
+    try {
+      // 使用查询参数而不是请求体
+      const response = await fetch(`/api/search_user_detail?userId=${user_id}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        }
+      });
+
+      const res = await response.json();
+      
+      if (res.code === 0) {
+        setUserDetail(
+          {
+            id: user_id,
+            name: res.user.name,
+            email: res.user.email,
+            avatar: res.user.avatar,
+            is_deleted: res.user.is_deleted,
+            is_friend: res.user.is_friend
+          }
+        );
+        // 默认设置添加好友的消息
+        setAddFriendMessageText(`你好，我是群「${groupInfo.name || "当前群聊"}」的成员，请求添加你为好友。`);
+        setUserDetailModalVisible(true);
+      } else if (res.code === -2) {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+      } else if (res.code === -1) {
+        messageApi.error("用户不存在");
+      } else {
+        messageApi.error(res.info || "获取用户信息失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    } finally {
+      setLoadingUserDetail(false);
+    }
+  };
+
+  // 添加发送好友请求的函数
+  const sendFriendRequest = async (targetId: number) => {
+    if (!addFriendMessageText.trim()) {
+      messageApi.warning("请输入附言");
+      return;
+    }
+    
+    setSendingFriendRequest(true);
+    const token = Cookies.get("jwtToken");
+
+    try {
+      const response = await fetch("/api/add_friend", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+        body: JSON.stringify({
+          target_id: targetId,
+          message: addFriendMessageText.trim(),
+        }),
+      });
+
+      const res = await response.json();
+      
+      if (res.code === 0) {
+        messageApi.success(res.message || "好友申请已发送");
+        //setUserDetailModalVisible(false);
+        // 刷新用户信息
+        fetchUserDetail(targetId);
+      } else if (res.code === -2) {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+      } else {
+        messageApi.error(res.info || "发送好友申请失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    } finally {
+      setSendingFriendRequest(false);
+    }
+  };
   // 获取群公告列表
   const fetchNotifications = async () => {
     if (!conversationId) {
@@ -1210,7 +1317,7 @@ const deleteMessages = async () => {
                     avatar={<Avatar 
                               src={item.avatar} 
                               size={46} 
-                              onClick={() => {if (item.id !== userId) messageApi.info("你点击了一个用户")}} // TODO: 改为使用search_user_detail api
+                              onClick={() => {if (item.id !== userId) fetchUserDetail(item.id); }}
                               style={{ cursor: item.id === userId ? "default" : "pointer" }}
                             />}
                     title={
@@ -2867,6 +2974,123 @@ const deleteMessages = async () => {
               borderRadius: "8px" 
             }}
           />
+        )}
+      </Modal>
+
+      {/* 用户详情模态框 */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', color: '#8A2BE2' }}>
+            <UserOutlined style={{ marginRight: '8px' }} />
+            <span>用户详情</span>
+          </div>
+        }
+        open={userDetailModalVisible}
+        onCancel={() => {
+          setUserDetailModalVisible(false);
+          setUserDetail(undefined);
+          setAddFriendMessageText('');
+        }}
+        footer={[]}
+        styles={{
+          mask: { backdropFilter: 'blur(3px)', background: 'rgba(0,0,0,0.45)' },
+          header: { borderBottom: '1px solid rgba(138, 43, 226, 0.1)' },
+          body: { padding: '20px' }
+        }}
+        width={420}
+        centered
+      >
+        {loadingUserDetail ? (
+          <div style={{ textAlign: 'center', padding: '30px 0' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: '16px' }}>加载用户信息中...</div>
+          </div>
+        ) : userDetail ? (
+          <div>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center',
+              marginBottom: '20px',
+              padding: '20px',
+              backgroundColor: 'rgba(138, 43, 226, 0.05)',
+              borderRadius: '12px'
+            }}>
+              <Avatar 
+                src={userDetail.avatar} 
+                size={80}
+                style={{
+                  border: userDetail.is_deleted 
+                    ? "3px solid rgba(255, 77, 79, 0.5)"
+                    : "3px solid rgba(138, 43, 226, 0.5)",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+                }}
+              />
+              <Title level={4} style={{ margin: '12px 0 4px', color: userDetail.is_deleted ? '#ff4d4f' : '#333' }}>
+                {userDetail.name}
+              </Title>
+              
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                <MailOutlined style={{ fontSize: '14px', marginRight: '6px', color: '#8A2BE2' }} />
+                <Text type="secondary">{userDetail.email}</Text>
+              </div>
+
+              <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+                {userDetail.is_deleted && (
+                  <Tag color="error">已注销</Tag>
+                )}
+                {userDetail.is_friend && (
+                  <Tag color="success" icon={<CheckCircleOutlined />}>已是好友</Tag>
+                )}
+                {userDetail.email === Cookies.get("userEmail") && (
+                  <Tag color="blue">自己</Tag>
+                )}
+              </div>
+            </div>
+
+            {!userDetail.is_deleted && 
+            !userDetail.is_friend && 
+            userDetail.email !== Cookies.get("userEmail") && (
+              <div style={{ marginTop: '20px' }}>
+                <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text strong>发送好友请求</Text>
+                  <Text type="secondary" style={{ fontSize: '13px' }}>添加为好友</Text>
+                </div>
+                
+                <Input.TextArea
+                  placeholder="请输入好友申请的附言..."
+                  value={addFriendMessageText}
+                  onChange={(e) => setAddFriendMessageText(e.target.value)}
+                  autoSize={{ minRows: 3, maxRows: 5 }}
+                  showCount
+                  maxLength={100}
+                  style={{ 
+                    borderRadius: '8px',
+                    marginBottom: '16px',
+                    border: addFriendMessageText.trim() ? '1px solid rgba(138, 43, 226, 0.3)' : '1px solid #d9d9d9'
+                  }}
+                />
+                
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
+                  <Button
+                    type="primary"
+                    disabled={!addFriendMessageText.trim()}
+                    loading={sendingFriendRequest}
+                    onClick={() => sendFriendRequest(Number(userDetail.id))}
+                    icon={<UserAddOutlined />}
+                    style={{ 
+                      backgroundColor: addFriendMessageText.trim() ? "#8A2BE2" : undefined, 
+                      borderColor: addFriendMessageText.trim() ? "#8A2BE2" : undefined
+                    }}
+                  >
+                    发送好友请求
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <Empty description="用户信息加载失败" />
         )}
       </Modal>
     </>
