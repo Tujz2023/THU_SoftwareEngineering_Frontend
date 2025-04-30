@@ -1,10 +1,21 @@
 import { useState, useEffect } from "react";
-import { Drawer, List, Avatar, Typography, message, Spin, Divider, Tag, Empty, Input, Dropdown, Button, Modal, Form, Upload, Checkbox, Radio, Switch } from "antd";
-import { UserOutlined, CrownOutlined, UserSwitchOutlined, SearchOutlined, TeamOutlined, SettingOutlined, MoreOutlined, EditOutlined, UploadOutlined, NotificationOutlined, DeleteOutlined, PlusOutlined, UserAddOutlined, CheckCircleOutlined, WarningOutlined } from "@ant-design/icons";
+import { Drawer, List, Avatar, Typography, message, Spin, Divider, Tag, Empty, Input, Dropdown, Button, Modal, Form, Upload, Checkbox, Radio, Switch, DatePicker, Space, Table, Select} from "antd";
+import { UserOutlined, CrownOutlined, UserSwitchOutlined, SearchOutlined, TeamOutlined, SettingOutlined, MoreOutlined, EditOutlined, UploadOutlined, NotificationOutlined, DeleteOutlined, PlusOutlined, UserAddOutlined, CheckCircleOutlined, WarningOutlined, HistoryOutlined, FilterOutlined } from "@ant-design/icons";
 import { Friend } from "../utils/types";
 import Cookies from "js-cookie";
 
 const { Text, Title } = Typography;
+
+// 消息类型定义
+interface Message {
+  id: number;
+  type: number; // 0为普通文字，1为图片
+  sender_id: number;
+  sender_name: string;
+  sender_avatar: string;
+  content: string;
+  timestamp: string;
+}
 
 interface ChatMember {
   id: number;
@@ -85,6 +96,17 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
 
   // 退出或者解散群聊
   const [dissolveOrLeaveModalVisible, setDissolveOrLeaveModalVisible] = useState(false);
+
+  // 聊天记录筛选相关状态
+  const [messageSearchForm] = Form.useForm();
+  const [filteredMessages, setFilteredMessages] = useState<Message[]>([]);
+  const [messageLoading, setMessageLoading] = useState(false);
+  const { RangePicker } = DatePicker;
+
+  const [messageSearchModalVisible, setMessageSearchModalVisible] = useState(false);
+  const [selectedMessages, setSelectedMessages] = useState<number[]>([]);
+  const [deletingMessages, setDeletingMessages] = useState(false);
+
 
   // 初始化群组信息
   useEffect(() => {
@@ -685,12 +707,136 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     }
   };
 
+  // 筛选聊天记录
+  const searchMessages = async (values: any) => {
+    if (!conversationId) {
+      messageApi.error("请选择一个聊天");
+      return;
+    }
+    
+    setMessageLoading(true);
+    setSelectedMessages([]);
+    const token = Cookies.get("jwtToken");
+    
+    // 准备请求体
+    const requestBody: {
+      conversationId: number;
+      start_time?: string;
+      end_time?: string;
+      sender_id?: number;
+      content?: string;
+    } = {
+      conversationId
+    };
+    
+    // 如果有时间范围
+    if (values.timeRange && values.timeRange.length === 2) {
+      requestBody.start_time = values.timeRange[0].toISOString();
+      requestBody.end_time = values.timeRange[1].toISOString();
+    }
+    
+    // 如果选择了发送者
+    if (values.sender_id) {
+      requestBody.sender_id = values.sender_id;
+    }
+    
+    // 如果有关键词
+    if (values.content && values.content.trim()) {
+      requestBody.content = values.content.trim();
+    }
+
+    try {
+      const response = await fetch(`/api/conversations/sift`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const res = await response.json();
+      
+      if (res.code === 0) {
+        setFilteredMessages(res.messages || []);
+        messageApi.success(`共找到 ${res.messages.length} 条消息`);
+        if (res.messages.length > 0) {
+          setMessageSearchModalVisible(true);
+        }
+      } else if (res.code === -2) {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+      } else {
+        messageApi.error(res.info || "筛选消息失败");
+      }
+    } catch (error) {
+      messageApi.error("网络错误，请稍后重试");
+    } finally {
+      setMessageLoading(false);
+    }
+  };
+
+  // 新增删除聊天记录的函数
+const deleteMessages = async () => {
+  if (selectedMessages.length === 0) {
+    messageApi.warning("请至少选择一条消息");
+    return;
+  }
+  
+  setDeletingMessages(true);
+  const token = Cookies.get("jwtToken");
+
+  try {
+    const response = await fetch(`/api/conversations/delete_messages`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `${token}`,
+      },
+      body: JSON.stringify({
+        message_ids: selectedMessages
+      }),
+    });
+
+    const res = await response.json();
+    
+    if (res.code === 0) {
+      messageApi.success(res.message || "删除聊天记录成功");
+      // 从筛选结果中移除已删除的消息
+      searchMessages(messageSearchForm.getFieldsValue());
+      // 清空选择
+      setSelectedMessages([]);
+    } else if (res.code === -2) {
+      Cookies.remove("jwtToken");
+      Cookies.remove("userEmail");
+      messageApi.error("JWT token无效或过期，正在跳转回登录界面...");
+    } else if (res.code === -1) {
+      messageApi.error("部分或全部消息不存在");
+      // 重新获取筛选结果
+      await searchMessages(messageSearchForm.getFieldsValue());
+    } else {
+      messageApi.error(res.info || "删除聊天记录失败");
+    }
+  } catch (error) {
+    messageApi.error("网络错误，请稍后重试");
+  } finally {
+    setDeletingMessages(false);
+  }
+};
+
   // 当抽屉可见时，获取相关数据
   useEffect(() => {
     if (visible) {
       setActiveMenu("聊天成员");
       fetchChatMembers();
       setSearchText(""); // 重置搜索框
+
+      //重置聊天记录搜索状态
+      messageSearchForm.resetFields();
+      setFilteredMessages([]);
+      setMessageLoading(false);
+
       if (isGroup) {
         fetchNotifications(); // 获取群公告
         fetchInvitations(); // 获取群聊邀请列表
@@ -911,9 +1057,11 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     { key: "群公告", icon: <NotificationOutlined />, title: "群公告" },
     { key: "群邀请", icon: <UserAddOutlined />, title: "群邀请", 
       badge: (userIdentity < 3) ? true : false // 只有群主和管理员才显示badge
-    }
+    },
+    { key: "聊天记录", icon: <HistoryOutlined />, title: "聊天记录" }
   ] : [
-    { key: "联系人", icon: <UserOutlined />, title: "联系人" }
+    { key: "联系人", icon: <UserOutlined />, title: "联系人" },
+    { key: "聊天记录", icon: <HistoryOutlined />, title: "聊天记录" }
   ];
 
   // 渲染成员列表内容
@@ -1682,6 +1830,123 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     );
   };
 
+  // 渲染聊天记录筛选界面
+  const renderChatHistory = () => {
+    const resetSearchForm = () => {
+      messageSearchForm.resetFields();
+      setFilteredMessages([]);
+      setMessageLoading(false);
+    }
+    return (
+      <div style={{ padding: "16px 24px" }}>
+        {/* 添加返回按钮，只在私聊模式下显示 */}
+        {!isGroup && (
+          <Button
+            icon={<div style={{ marginRight: '4px' }}>←</div>}
+            onClick={() => {
+              resetSearchForm();
+              setActiveMenu("联系人");
+            }}
+            style={{
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              borderRadius: '8px',
+              background: 'rgba(138, 43, 226, 0.08)',
+              color: '#8A2BE2',
+              fontWeight: '500',
+              border: '1px solid rgba(138, 43, 226, 0.2)',
+              boxShadow: '0 2px 6px rgba(138, 43, 226, 0.1)',
+              padding: '4px 16px',
+              height: '36px'
+            }}
+          >
+            返回私聊设置
+          </Button>
+        )}
+        
+        <div style={{ marginBottom: "20px" }}>
+          <Title level={5} style={{ color: "#8A2BE2", marginBottom: "16px" }}>筛选聊天记录</Title>
+          
+          <Form
+            form={messageSearchForm}
+            layout="vertical"
+            onFinish={searchMessages}
+            style={{ 
+              backgroundColor: "rgba(138, 43, 226, 0.05)",
+              padding: "16px",
+              borderRadius: "8px"
+            }}
+          >
+            <Form.Item name="timeRange" label="时间范围">
+              <RangePicker 
+                showTime 
+                style={{ width: '100%' }} 
+                placeholder={['开始时间', '结束时间']}
+              />
+            </Form.Item>
+            
+            <Form.Item name="sender_id" label="发送者">
+              <Select 
+                allowClear
+                placeholder="选择发送者"
+                style={{ width: '100%' }}
+                options={members.map(member => ({
+                  label: (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Avatar src={member.avatar} size="small" />
+                      <span>{member.name}</span>
+                    </div>
+                  ),
+                  value: member.id,
+                }))}
+              />
+            </Form.Item>
+            
+            <Form.Item name="content" label="消息关键词">
+              <Input placeholder="请输入要搜索的关键词" />
+            </Form.Item>
+            
+            <Form.Item>
+              <Button 
+                type="primary" 
+                htmlType="submit" 
+                loading={messageLoading}
+                icon={<FilterOutlined />}
+                style={{ 
+                  background: "#8A2BE2", 
+                  borderColor: "#8A2BE2",
+                  width: "100%"
+                }}
+              >
+                筛选消息
+              </Button>
+            </Form.Item>
+          </Form>
+        </div>
+        
+        {filteredMessages.length > 0 && (
+          <div style={{ marginTop: "20px", textAlign: "center" }}>
+            <Button 
+              type="primary"
+              icon={<SearchOutlined />}
+              onClick={() => setMessageSearchModalVisible(true)}
+              style={{ 
+                background: "#8A2BE2", 
+                borderColor: "#8A2BE2",
+                borderRadius: "8px",
+                height: "40px",
+                padding: "0 24px"
+              }}
+            >
+              查看筛选结果 ({filteredMessages.length}条记录)
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // 增强非群聊会话的设置项
   const renderPrivateChatSettings = () => {
     return (
@@ -1768,6 +2033,28 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
             </List.Item>
           )}
         />
+        {/* 添加聊天记录管理按钮 */}
+        <Button
+          type="primary"
+          icon={<HistoryOutlined />}
+          onClick={() => setActiveMenu("聊天记录")}
+          style={{
+            marginTop: "20px",
+            width: "100%", 
+            height: "42px",
+            background: "linear-gradient(135deg, #8A2BE2, #6A1B9A)",
+            borderColor: "#6A1B9A",
+            borderRadius: "8px",
+            boxShadow: "0 4px 12px rgba(138, 43, 226, 0.1)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: "8px",
+            fontSize: "15px"
+          }}
+        >
+          查看聊天记录
+        </Button>
       </div>
     );
   };
@@ -1784,12 +2071,17 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
           return renderNotifications();
         case "群邀请":
           return renderInvitations();
+        case "聊天记录":
+          return renderChatHistory();
         default:
           return renderMemberList();
       }
     } else {
-      // 非群聊使用新的私聊设置渲染
-      return renderPrivateChatSettings();
+      if (activeMenu === "聊天记录") {
+        return renderChatHistory();
+      } else {
+        return renderPrivateChatSettings();
+      }
     }
   };
 
@@ -2452,6 +2744,130 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* 聊天记录查询结果模态窗口 */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <HistoryOutlined style={{ marginRight: '10px', color: '#8A2BE2' }} />
+              <span>聊天记录查询结果</span>
+            </div>
+              <Text type="secondary" style={{ marginLeft: '20px' }}>共 {filteredMessages.length} 条记录</Text>
+          </div>
+        }
+        open={messageSearchModalVisible}
+        onCancel={() => setMessageSearchModalVisible(false)}
+        footer={[
+          <Button 
+            key="back" 
+            onClick={() => setMessageSearchModalVisible(false)}
+          >
+            关闭
+          </Button>,
+          <Button
+            key="delete"
+            type="primary"
+            danger
+            disabled={selectedMessages.length === 0}
+            loading={deletingMessages}
+            onClick={deleteMessages}
+            icon={<DeleteOutlined />}
+          >
+            删除选中消息({selectedMessages.length})
+          </Button>,
+        ]}
+        width={800}
+        styles={{
+          mask: { backdropFilter: 'blur(4px)', background: 'rgba(0,0,0,0.45)' },
+          body: { maxHeight: '600px', overflow: 'auto' }
+        }}
+      >
+        {messageLoading ? (
+          <div style={{ textAlign: "center", padding: "40px 0" }}>
+            <Spin size="large" />
+            <div style={{ marginTop: "16px" }}>加载中...</div>
+          </div>
+        ) : filteredMessages.length > 0 ? (
+          <Table 
+            dataSource={filteredMessages} 
+            rowKey="id"
+            pagination={{ pageSize: 10 }}
+            rowSelection={{
+              type: 'checkbox',
+              selectedRowKeys: selectedMessages,
+              onChange: (selectedRowKeys) => {
+                setSelectedMessages(selectedRowKeys as number[]);
+              }
+            }}
+            columns={[
+              {
+                title: '发送者',
+                dataIndex: 'sender_name',
+                key: 'sender_name',
+                width: 120,
+                render: (text: string, record: Message) => (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Avatar src={record.sender_avatar} size="small" />
+                    <span>{text}</span>
+                  </div>
+                ),
+              },
+              {
+                title: '消息内容',
+                dataIndex: 'content',
+                key: 'content',
+                render: (text: string, record: Message) => (
+                  <div>
+                    {record.type === 0 ? (
+                      <span>{text}</span>
+                    ) : (
+                      <div>
+                        <Tag color="blue">图片</Tag>
+                        <a href={text} target="_blank" rel="noopener noreferrer">查看图片</a>
+                      </div>
+                    )}
+                  </div>
+                ),
+              },
+              {
+                title: '发送时间',
+                dataIndex: 'timestamp',
+                key: 'timestamp',
+                width: 180,
+                render: (text: string) => (
+                  <span>
+                    {new Date(text).toLocaleString('zh-CN', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    })}
+                  </span>
+                ),
+              },
+            ]}
+            style={{ 
+              backgroundColor: "white",
+              borderRadius: "8px",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)"
+            }}
+          />
+        ) : (
+          <Empty 
+            description="未找到匹配的消息记录" 
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            style={{ 
+              margin: "32px 0",
+              padding: "32px",
+              backgroundColor: "white",
+              borderRadius: "8px" 
+            }}
+          />
+        )}
       </Modal>
     </>
   );

@@ -1714,7 +1714,7 @@ const ChatPage = () => {
           isTop={conversations.find((c) => c.id === selectedConversationId)?.is_top || false}
           noticeAble={conversations.find((c) => c.id === selectedConversationId)?.notice_able || true}
           refreshConversations={fetchConversations}
-          userId={userInfo.id}
+          userId={userInfo?.id}
         />
         {/* 回复列表弹窗 */}
         {showReplyList && (
