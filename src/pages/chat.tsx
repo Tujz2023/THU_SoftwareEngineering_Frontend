@@ -382,7 +382,7 @@ const ChatPage = () => {
     }
   };
 
-  const fn = useCallback((param: number, extra_param: string) => {
+  const fn = useCallback((param: number, extraParam: string) => {
     if (param === 2) fetchFriendRequests();
     else if (param === 3) { 
       if (isFriendsDrawerVisible === true) {
@@ -400,7 +400,7 @@ const ChatPage = () => {
     } //删除需要的函数
     else if (param === 1) {
       if (selectedConversationId) {
-        if (extra_param == 'true')
+        if (extraParam === 'true')
           fetchMessages(selectedConversationId, true, undefined);
         else
           fetchMessages(selectedConversationId, false, undefined);
@@ -410,15 +410,15 @@ const ChatPage = () => {
     }
     else if (param === 4) fetchConversations();
     else if (param === 5) {
-      if (Number(extra_param) === selectedConversationId)
+      if (Number(extraParam) === selectedConversationId)
         setChatInfoWebsocket(1);
     }
     else if (param === 6) {
-      if (Number(extra_param) === selectedConversationId)
+      if (Number(extraParam) === selectedConversationId)
         setChatInfoWebsocket(2);
     }
     else if (param === 7) {
-      if (Number(extra_param) === selectedConversationId)
+      if (Number(extraParam) === selectedConversationId)
         setChatInfoWebsocket(3);
     }
     else if (param === 8) {
