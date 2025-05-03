@@ -167,6 +167,20 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       fetchFriends();
       setWebsocket(0);
     }
+    else if (websocket === 6) {
+      setIsGroupInfoModalVisible(false);
+      setTransferModalVisible(false);
+      setIsNotificationModalVisible(false);
+      setNotificationContent('');
+      setIsInviteModalVisible(false);
+      setDissolveOrLeaveModalVisible(false);
+      setMessageSearchModalVisible(false);
+      setSelectedMessages([]);
+      setDeletingMessages(false);
+      setUserDetailModalVisible(false);
+      onClose();
+      setWebsocket(0);
+    }
   }, [websocket]);
 
   // 当props变化时更新本地状态

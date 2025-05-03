@@ -260,7 +260,7 @@ const ChatPage = () => {
   };
 
   // 获取会话列表
-  const fetchConversations = async () => {
+  const fetchConversations = async (extraParam?: string) => {
     try {
       const response = await fetch("/api/conversations", {
         method: "GET",
@@ -275,7 +275,11 @@ const ChatPage = () => {
         setConversations(res.conversation);
         const conversationExists = res.conversation.some((conv: Conversation) => conv.id === selectedConversationId);
         if (!conversationExists) {
-          if (isChatInfoVisible) setChatInfoWebsocket(4);
+          if (isChatInfoVisible) {
+            if (extraParam !== undefined && extraParam === 'true')
+              setChatInfoWebsocket(6);
+            else setChatInfoWebsocket(4);
+          }
           setSelectedConversationId(0); // 如果不存在，则将selectedConversationId置为空
         }
       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
@@ -422,7 +426,7 @@ const ChatPage = () => {
         setChatInfoWebsocket(3);
     }
     else if (param === 8) {
-      fetchConversations();
+      fetchConversations(extraParam);
     }
     else {
       messageApi.error("Websocket错误");
