@@ -109,6 +109,10 @@ const ChatPage = () => {
   const [showReadList, setShowReadList] = useState(false);
   const [readListLoading, setReadListLoading] = useState(false);
   const [readList, setReadList] = useState<ReadUser[]>([]);
+
+  // websocket相关
+  const [chatInfoWebsocket, setChatInfoWebsocket] = useState<number>(0);
+
   // 添加滚动到指定消息的函数
   const scrollToMessage = (messageId: number) => {
     if (messageRefs.current[messageId]) {
@@ -234,8 +238,6 @@ const ChatPage = () => {
       if (res.code === 0) {
         const requests = res.requests;
         setFriendRequests(res.requests);
-        // console.log("fetch friend requests success!!!")
-        // console.log(requests)
         const unhandledCount = requests.filter((request: FriendRequest) => request.status === 0).length;
         setUnhandleRequests(unhandledCount);
       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
@@ -271,9 +273,9 @@ const ChatPage = () => {
       const res = await response.json();
       if (res.code === 0) {
         setConversations(res.conversation);
-        console.log(res.conversation);
         const conversationExists = res.conversation.some((conv: Conversation) => conv.id === selectedConversationId);
         if (!conversationExists) {
+          if (isChatInfoVisible) setChatInfoWebsocket(4);
           setSelectedConversationId(0); // 如果不存在，则将selectedConversationId置为空
         }
       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
@@ -380,7 +382,7 @@ const ChatPage = () => {
     }
   };
 
-  const fn = useCallback((param: number) => {
+  const fn = useCallback((param: number, extra_param: string) => {
     if (param === 2) fetchFriendRequests();
     else if (param === 3) { 
       if (isFriendsDrawerVisible === true) {
@@ -392,21 +394,41 @@ const ChatPage = () => {
       if (isCreateCovModalVisible === true) {
         setCreateConvWebsocket(true);
       }
+      if (isChatInfoVisible) 
+        setChatInfoWebsocket(5);
       fetchConversations();
     } //删除需要的函数
     else if (param === 1) {
       if (selectedConversationId) {
-        fetchMessages(selectedConversationId, false, undefined);
+        if (extra_param == 'true')
+          fetchMessages(selectedConversationId, true, undefined);
+        else
+          fetchMessages(selectedConversationId, false, undefined);
       }
-      else {
+      else
         fetchConversations();
-      }
+    }
+    else if (param === 4) fetchConversations();
+    else if (param === 5) {
+      if (Number(extra_param) === selectedConversationId)
+        setChatInfoWebsocket(1);
+    }
+    else if (param === 6) {
+      if (Number(extra_param) === selectedConversationId)
+        setChatInfoWebsocket(2);
+    }
+    else if (param === 7) {
+      if (Number(extra_param) === selectedConversationId)
+        setChatInfoWebsocket(3);
+    }
+    else if (param === 8) {
+      fetchConversations();
     }
     else {
-      alert("websocket尚未实现...");
+      messageApi.error("Websocket错误");
     }
   // }, []);
-  }, [selectedConversationId, isFriendsDrawerVisible, isGroupDrawerVisible, isCreateCovModalVisible]);
+  }, [selectedConversationId, isFriendsDrawerVisible, isGroupDrawerVisible, isCreateCovModalVisible, isChatInfoVisible]);
 
   if (token) {
     useMessageListener(token, fn);
@@ -1752,6 +1774,8 @@ const ChatPage = () => {
           refreshConversations={fetchConversations}
           userId={userInfo?.id}
           fetchMessages={fetchMessages}
+          websocket={chatInfoWebsocket}
+          setWebsocket={setChatInfoWebsocket}
         />
         {/* 回复列表弹窗 */}
         {showReplyList && (

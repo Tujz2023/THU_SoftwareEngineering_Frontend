@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Dispatch, SetStateAction } from "react";
 import { Drawer, List, Avatar, Typography, message, Spin, Divider, Tag, Empty, Input, Dropdown, Button, Modal, Form, Upload, Checkbox, Radio, Switch, DatePicker, Space, Table, Select} from "antd";
 import { UserOutlined, CrownOutlined, UserSwitchOutlined, SearchOutlined, TeamOutlined, SettingOutlined, MoreOutlined, EditOutlined, UploadOutlined, NotificationOutlined, DeleteOutlined, PlusOutlined, UserAddOutlined, CheckCircleOutlined, WarningOutlined, HistoryOutlined, FilterOutlined, MailOutlined } from "@ant-design/icons";
 import { Friend } from "../utils/types";
@@ -44,9 +44,11 @@ interface ChatInfoDrawerProps {
   refreshConversations: () => void; // 新增：刷新会话列表的回调函数
   userId: number;
   fetchMessages: (conversationId: number, shouldScroll: boolean, fromTime?: string) => void;
+  websocket: number;
+  setWebsocket: Dispatch<SetStateAction<number>>;
 }
 
-const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, groupAvatar, isTop, noticeAble, refreshConversations, userId, fetchMessages }: ChatInfoDrawerProps) => {
+const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, groupAvatar, isTop, noticeAble, refreshConversations, userId, fetchMessages, websocket, setWebsocket }: ChatInfoDrawerProps) => {
   const [memberloading, setmemberLoading] = useState(false);
   const [members, setMembers] = useState<ChatMember[]>([]);
   const [userIdentity, setUserIdentity] = useState<number>(3); // 默认为普通成员
@@ -132,6 +134,40 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       });
     }
   }, [groupName, groupAvatar]);
+
+  useEffect(() => {
+    if (websocket === 1) {
+      fetchChatMembers();
+      setWebsocket(0);
+    }
+    else if (websocket === 2) {
+      fetchNotifications();
+      setWebsocket(0)
+    }
+    else if (websocket === 3) {
+      fetchInvitations();
+      setWebsocket(0);
+    }
+    else if (websocket === 4) {
+      setIsGroupInfoModalVisible(false);
+      setTransferModalVisible(false);
+      setIsNotificationModalVisible(false);
+      setNotificationContent('');
+      setIsInviteModalVisible(false);
+      setDissolveOrLeaveModalVisible(false);
+      setMessageSearchModalVisible(false);
+      setSelectedMessages([]);
+      setDeletingMessages(false);
+      setUserDetailModalVisible(false);
+      onClose();
+      messageApi.warning("您已被移出群聊，或被好友删除");
+      setWebsocket(0);
+    }
+    else if (websocket === 5) {
+      fetchFriends();
+      setWebsocket(0);
+    }
+  }, [websocket]);
 
   // 当props变化时更新本地状态
   useEffect(() => {
@@ -435,8 +471,6 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       
       if (res.code === 0) {
         messageApi.success("设置管理员成功");
-        // 重新获取成员列表以更新UI
-        fetchChatMembers();
       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
@@ -478,8 +512,6 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       
       if (res.code === 0) {
         messageApi.success("解除管理员成功");
-        // 重新获取成员列表以更新UI
-        fetchChatMembers();
       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
@@ -526,10 +558,6 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       if (res.code === 0) {
         messageApi.success(res.message || "群主转让成功");
         setTransferModalVisible(false);
-        // 更新当前用户身份和成员列表
-        setUserIdentity(3); // 转让后变为普通成员
-        // 重新获取成员列表
-        fetchChatMembers();
         setTargetMember(undefined);
       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
@@ -590,8 +618,6 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
         messageApi.success(res.message || "发布群公告成功");
         setIsNotificationModalVisible(false);
         setNotificationContent('');
-        // 重新获取群公告
-        fetchNotifications();
       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
@@ -635,8 +661,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       if (res.code === 0) {
         messageApi.success(res.message || "删除群公告成功");
         // 从本地状态中移除已删除的公告
-        setNotifications(prev => prev.filter(notification => notification.notification_id !== notificationId));
-      } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
+       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
         messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {router.push("/");})
@@ -718,12 +743,6 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       
       if (res.code === 0) {
         messageApi.success(res.message || (accept ? "已接受邀请" : "已拒绝邀请"));
-        // 更新邀请列表
-        fetchInvitations();
-        if (accept) {
-          // 如果接受邀请，刷新成员列表
-          fetchChatMembers();
-        }
       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
@@ -954,7 +973,7 @@ const deleteMessages = async () => {
 
   // 当抽屉可见时，获取相关数据
   useEffect(() => {
-    if (visible) {
+    if (visible && conversationId !== 0) {
       setActiveMenu("聊天成员");
       fetchChatMembers();
       setSearchText(""); // 重置搜索框
@@ -1074,14 +1093,12 @@ const deleteMessages = async () => {
       if (res.code === 0) {
         messageApi.success(res.message || "修改群信息成功");
         // 更新本地群信息
-        setGroupInfo({
-          name: values.name || groupInfo.name,
-          avatar: values.avatar || groupInfo.avatar
-        });
+        // setGroupInfo({
+        //   name: values.name || groupInfo.name,
+        //   avatar: values.avatar || groupInfo.avatar
+        // });
         // 关闭模态框
         setIsGroupInfoModalVisible(false);
-        // 重新获取成员列表以及群信息
-        // fetchChatMembers();
       } else if (Number(res.code) === -2 && res.info === "Invalid or expired JWT") {
         Cookies.remove("jwtToken");
         Cookies.remove("userEmail");
@@ -1122,9 +1139,6 @@ const deleteMessages = async () => {
       
       if (res.code === 0) {
         messageApi.success(res.message || "操作成功");
-        setDissolveOrLeaveModalVisible(false);
-        onClose();
-        refreshConversations();
       } else {
         messageApi.error(res.info || "操作失败");
       }
@@ -1163,7 +1177,6 @@ const deleteMessages = async () => {
       
       if (res.code === 0) {
         messageApi.success(res.message || "移除成功");
-        fetchChatMembers();
       } else {
         messageApi.error(res.info || "移除失败");
       }

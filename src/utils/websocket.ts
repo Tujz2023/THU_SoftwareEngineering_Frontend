@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 
 
 // 使用 React 的 useEffect 钩子来监听 WebSocket 消息
-export const useMessageListener = (token: string, fn: (param: number) => void) => {
+export const useMessageListener = (token: string, fn: (param: number, extra_param: string) => void) => {
   useEffect(() => {
     let websocket: WebSocket | undefined;
     let isClosedManually = false;
@@ -23,10 +23,15 @@ export const useMessageListener = (token: string, fn: (param: number) => void) =
         if (event.data) {
           try {
             const message = JSON.parse(event.data);
-            if (message.type === "notify") fn(1);
-            else if (message.type === "request_message") fn(2);
-            else if (message.type === "delete_friend") fn(3);
-            else fn(4);
+            if (message.type === "notify") fn(1, message.scroll);
+            else if (message.type === "request_message") fn(2, "");
+            else if (message.type === "delete_friend") fn(3, "");
+            else if (message.type === "conv_setting") fn(4, "");
+            else if (message.type === "modify_members") fn(5, message.conversationId);
+            else if (message.type === "notification_message") fn(6, message.conversationId);
+            else if (message.type === "invitation_message") fn(7, message.conversationId);
+            else if (message.type === "remove_members") fn(8, "");
+            else fn(9, "");
           } catch (error) {
             console.error("解析 WebSocket 消息失败:", error);
           }
