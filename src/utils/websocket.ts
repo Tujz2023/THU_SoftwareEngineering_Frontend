@@ -31,7 +31,8 @@ export const useMessageListener = (token: string, fn: (param: number, extraParam
             else if (message.type === "notification_message") fn(6, message.conversationId);
             else if (message.type === "invitation_message") fn(7, message.conversationId);
             else if (message.type === "remove_members") fn(8, message.self);
-            else fn(9, "");
+            else if (message.type === "already_read") fn(9, message.conversationId);
+            else fn(10, "");
           } catch (error) {
             console.error("解析 WebSocket 消息失败:", error);
           }

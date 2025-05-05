@@ -85,6 +85,7 @@ const ChatPage = () => {
   const [groupDrawerWebsocket, setGroupDrawerWebsocket] = useState(false);
   const [createConvWebsocket, setCreateConvWebsocket] = useState(false);
 
+  const [chatWebsocket, setChatWebsocket] = useState(false);
   // 添加回复相关状态及功能
   const [replyToMessage, setReplyToMessage] = useState<Message | undefined>(undefined);
   const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | undefined>(undefined);
@@ -428,15 +429,38 @@ const ChatPage = () => {
     else if (param === 8) {
       fetchConversations(extraParam);
     }
+    else if (param === 9) {
+      if (Number(extraParam) === selectedConversationId)
+      {
+        const isChatGroup = conversations.find(conv => conv.id === selectedConversationId)?.is_chat_group;        
+        if (isChatGroup === true) {
+          setChatWebsocket(true);
+        }
+        else {
+          const updatedMessages = messages.map(message => ({
+            ...message,
+            already_read: true
+          }))
+          setMessages(updatedMessages);
+        }
+      }
+    }
     else {
       messageApi.error("Websocket错误");
     }
   // }, []);
-  }, [selectedConversationId, isFriendsDrawerVisible, isGroupDrawerVisible, isCreateCovModalVisible, isChatInfoVisible]);
+  }, [selectedConversationId, isFriendsDrawerVisible, isGroupDrawerVisible, isCreateCovModalVisible, isChatInfoVisible, conversations]);
 
   if (token) {
     useMessageListener(token, fn);
   }
+
+  useEffect(() => {
+    if (chatWebsocket === true && showReadList === true && rightClickedMessage !== undefined) {
+      fetchReadList(rightClickedMessage.id);
+      setChatWebsocket(false);
+    }
+  }, [showReadList, chatWebsocket]);
 
   // 检查 JWT Token 的有效性
   useEffect(() => {
