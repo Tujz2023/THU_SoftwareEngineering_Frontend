@@ -43,12 +43,13 @@ interface ChatInfoDrawerProps {
   noticeAble: boolean;    // 新增：是否通知（免打扰相反）
   refreshConversations: () => void; // 新增：刷新会话列表的回调函数
   userId: number;
+  userInfo: any;
   fetchMessages: (conversationId: number, shouldScroll: boolean, fromTime?: string) => void;
   websocket: number;
   setWebsocket: Dispatch<SetStateAction<number>>;
 }
 
-const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, groupAvatar, isTop, noticeAble, refreshConversations, userId, fetchMessages, websocket, setWebsocket }: ChatInfoDrawerProps) => {
+const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, groupAvatar, isTop, noticeAble, refreshConversations, userId, userInfo, fetchMessages, websocket, setWebsocket }: ChatInfoDrawerProps) => {
   const [memberloading, setmemberLoading] = useState(false);
   const [members, setMembers] = useState<ChatMember[]>([]);
   const [userIdentity, setUserIdentity] = useState<number>(3); // 默认为普通成员
@@ -2040,6 +2041,7 @@ const deleteMessages = async () => {
               />
             </Form.Item>
             
+            {isGroup && (
             <Form.Item name="sender_id" label="发送者">
               <Select 
                 allowClear
@@ -2055,7 +2057,36 @@ const deleteMessages = async () => {
                   value: member.id,
                 }))}
               />
-            </Form.Item>
+            </Form.Item>)}
+
+            {!isGroup && (
+            <Form.Item name="sender_id" label="发送者">
+              <Select 
+                allowClear
+                placeholder="选择发送者"
+                style={{ width: '100%' }}
+                options={[
+                  ...members.map(member => ({
+                    label: (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Avatar src={member.avatar} size="small" />
+                        <span>{member.name}</span>
+                      </div>
+                    ),
+                    value: member.id,
+                  })),
+                  {
+                    label: (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Avatar src={userInfo.avatar} size="small" />
+                        <span>{userInfo.name}</span>
+                      </div>
+                    ),
+                    value: userInfo.id,
+                  }
+                ]}
+              />
+            </Form.Item>)}
             
             <Form.Item name="content" label="消息关键词">
               <Input placeholder="请输入要搜索的关键词" />

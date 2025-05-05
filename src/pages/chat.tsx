@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef, useActionState } from "react";
 import { useRouter } from "next/router";
 import Cookies from "js-cookie";
 import { Input, Button, Layout, List, Avatar, Typography, message, Badge, Empty, Tooltip, Spin, Divider, Tag } from "antd";
@@ -86,6 +86,8 @@ const ChatPage = () => {
   const [createConvWebsocket, setCreateConvWebsocket] = useState(false);
 
   const [chatWebsocket, setChatWebsocket] = useState(false);
+  const [messageWebsocket, setMessageWebsocket] = useState(false);
+  const [messageWebsocket2, setMessageWebsocket2] = useState(false);
   // 添加回复相关状态及功能
   const [replyToMessage, setReplyToMessage] = useState<Message | undefined>(undefined);
   const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | undefined>(undefined);
@@ -334,6 +336,7 @@ const ChatPage = () => {
         }));
         
         setMessages(formattedMessages);
+        setMessageWebsocket2(true);
 
         // 仅在应该滚动且消息非空的情况下滚动到底部
         if (shouldScroll && formattedMessages.length > 0) {
@@ -437,11 +440,7 @@ const ChatPage = () => {
           setChatWebsocket(true);
         }
         else {
-          const updatedMessages = messages.map(message => ({
-            ...message,
-            already_read: true
-          }))
-          setMessages(updatedMessages);
+          setMessageWebsocket(true);
         }
       }
     }
@@ -454,6 +453,21 @@ const ChatPage = () => {
   if (token) {
     useMessageListener(token, fn);
   }
+
+  useEffect(() => {
+    if (messageWebsocket === true && messageWebsocket2 === true) {
+      const timer = setTimeout(() => {
+        setMessages(messages => messages.map(message => ({
+          ...message,
+          already_read: true
+        })));
+        setMessageWebsocket(false);
+        setMessageWebsocket2(false);
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [messages, messageWebsocket, messageWebsocket2]);
 
   useEffect(() => {
     if (chatWebsocket === true && showReadList === true && rightClickedMessage !== undefined) {
@@ -1801,6 +1815,7 @@ const ChatPage = () => {
           noticeAble={conversations.find((c) => c.id === selectedConversationId)?.notice_able || true}
           refreshConversations={fetchConversations}
           userId={userInfo?.id}
+          userInfo={userInfo}
           fetchMessages={fetchMessages}
           websocket={chatInfoWebsocket}
           setWebsocket={setChatInfoWebsocket}
