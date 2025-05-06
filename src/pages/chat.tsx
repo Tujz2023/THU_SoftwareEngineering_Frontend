@@ -1,7 +1,7 @@
-import { useCallback, useState, useEffect, useRef, useActionState } from "react";
+import React, { useCallback, useState, useEffect, useRef, useActionState } from "react";
 import { useRouter } from "next/router";
 import Cookies from "js-cookie";
-import { Input, Button, Layout, List, Avatar, Typography, message, Badge, Empty, Tooltip, Spin, Divider, Tag } from "antd";
+import { Input, Button, Layout, List, Avatar, Typography, message, Badge, Empty, Tooltip, Spin, Divider, Tag, Popover } from "antd";
 import { MessageOutlined, TeamOutlined, SettingOutlined, PictureOutlined, SmileOutlined, MoreOutlined, ContactsOutlined, SendOutlined, SearchOutlined, ClockCircleOutlined, PlusCircleOutlined, CloseOutlined, CheckCircleOutlined, PushpinOutlined, BellOutlined } from "@ant-design/icons";
 import 'antd/dist/reset.css';
 import SettingsDrawer from "../components/SettingsDrawer";
@@ -11,6 +11,7 @@ import CreateCovModal from "../components/CreateCovModal";
 import { FriendRequest } from "../utils/types";
 import ChatInfoDrawer from "../components/ChatInfoDrawer";
 import { useMessageListener } from "../utils/websocket";
+import { emojis } from "../utils/emojis"; 
 const { Header, Sider, Content } = Layout;
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -116,6 +117,10 @@ const ChatPage = () => {
   // websocket相关
   const [chatInfoWebsocket, setChatInfoWebsocket] = useState<number>(0);
 
+  //表情相关状态
+  const [emojiVisible, setEmojiVisible] = useState(false);
+
+  
   // 添加滚动到指定消息的函数
   const scrollToMessage = (messageId: number) => {
     if (messageRefs.current[messageId]) {
@@ -550,6 +555,79 @@ const ChatPage = () => {
     }
   };
 
+  //添加插入表情的函数
+  const handleEmojiSelect = (emoji: string) => {
+    setInput((prevInput) => prevInput + emoji);
+    //setEmojiVisible(false);
+  }
+
+  //处理图片上传
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) {
+      messageApi.error("请选择要上传的图片");
+      return;
+    }
+
+    const file = files[0];
+    
+    // 检查文件是否为图片
+    if (!file.type.startsWith("image/")) {
+      messageApi.error("请选择有效的图片文件");
+      return;
+    }
+
+    // 检查是否选择了会话
+    if (!selectedConversationId) {
+      messageApi.error("请选择一个聊天");
+      return;
+    }
+
+    // 显示加载提示
+    const loadingMessage = messageApi.loading("正在上传图片...", 0);
+
+    try {
+      const formData = new FormData();
+      formData.append("conversationId", selectedConversationId.toString());
+      formData.append("image", file);
+
+      const response = await fetch('/api/conversations/image', {
+        method: 'POST',
+        headers: {
+          Authorization: `${token}`,
+        },
+        body: formData,
+      });
+
+      const res = await response.json();
+
+      // 关闭加载提示
+      loadingMessage();
+
+      if (res.code === 0) {
+        messageApi.success("图片上传成功");
+        // 清空文件输入框
+        if (event.target) event.target.value = "";
+      } else if (res.code === -2 && res.info === "Invalid or expired JWT") {
+        Cookies.remove("jwtToken");
+        Cookies.remove("userEmail");
+        messageApi.error("JWT token无效或过期，正在跳转回登录界面...").then(() => {
+          router.push("/");
+        });
+      } else if (res.code === 1) {
+        messageApi.error("当前用户不在会话中");
+      } else if (res.code === -1) {
+        messageApi.error("会话不存在");
+      } else {
+        messageApi.error(res.info || "图片上传失败");
+      }
+    } catch (error) {
+      // 关闭加载提示
+      loadingMessage();
+      messageApi.error("网络错误，请稍后重试");
+    }
+  };
+
   const fetchReplyList = async (messageId: number) => {
     setReplyListLoading(true);
     try {
@@ -819,7 +897,48 @@ const ChatPage = () => {
       </div>
     );
   }
-
+  //渲染表情选择器内容
+  const renderEmojiContent = () => {
+    return (
+      <div style={{ 
+        width: '300px', 
+        maxHeight: '200px', 
+        overflowY: 'auto',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '6px',
+        padding: '8px'
+      }}>
+        {emojis.map((emoji, index) => (
+          <div 
+            key={index}
+            onClick={() => handleEmojiSelect(emoji)}
+            style={{ 
+              cursor: 'pointer',
+              fontSize: '24px',
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              borderRadius: '4px',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(138, 43, 226, 0.1)';
+              e.currentTarget.style.transform = 'scale(1.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            {emoji}
+          </div>
+        ))}
+      </div>
+    );
+  };
   return (
     <>
       {contextHolder}
@@ -1669,7 +1788,31 @@ const ChatPage = () => {
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px' }}>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {/* TODO(暂无需考虑): 额外信息===================================================================== */}
-                  <Tooltip title="表情">
+                  <Popover 
+                    content={renderEmojiContent()} 
+                    trigger="click" 
+                    open={emojiVisible}
+                    onOpenChange={setEmojiVisible}
+                    placement="topLeft"
+                    style={{ maxWidth: '320px'}}
+                    title={
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        borderBottom: '1px solid #f0f0f0',
+                        paddingBottom: '8px'
+                      }}>
+                        <Text strong style={{ color: '#8A2BE2' }}>表情选择</Text>
+                        <Button 
+                          type="text" 
+                          size="small" 
+                          icon={<CloseOutlined />} 
+                          onClick={() => setEmojiVisible(false)}
+                        />
+                      </div>
+                    }
+                  >
                     <Button 
                       type="text" 
                       shape="circle" 
@@ -1689,7 +1832,7 @@ const ChatPage = () => {
                         e.currentTarget.style.transform = 'scale(1)';
                       }}
                     />
-                  </Tooltip>
+                  </Popover>
                   <Tooltip title="图片">
                     <Button 
                       type="text" 
@@ -1701,6 +1844,7 @@ const ChatPage = () => {
                         justifyContent: 'center',
                         transition: 'all 0.3s'
                       }}
+                      onClick={() => document.getElementById('imageUpload')?.click()}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor = 'rgba(138, 43, 226, 0.1)';
                         e.currentTarget.style.transform = 'scale(1.1)';
@@ -1711,6 +1855,13 @@ const ChatPage = () => {
                       }}
                     />
                   </Tooltip>
+                  <input
+                    type="file"
+                    id="imageUpload"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleImageUpload}
+                  />
                   {/* TODO(暂无需考虑): 额外信息===================================================================== */}
                 </div>
                 
