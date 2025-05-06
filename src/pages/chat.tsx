@@ -584,7 +584,7 @@ const ChatPage = () => {
     }
 
     // 显示加载提示
-    const loadingMessage = messageApi.loading("正在上传图片...", 0);
+    // const loadingMessage = messageApi.loading("正在上传图片...", 0);
 
     try {
       const formData = new FormData();
@@ -602,10 +602,10 @@ const ChatPage = () => {
       const res = await response.json();
 
       // 关闭加载提示
-      loadingMessage();
+      // loadingMessage();
 
       if (res.code === 0) {
-        messageApi.success("图片上传成功");
+        messageApi.success("图片发送成功");
         // 清空文件输入框
         if (event.target) event.target.value = "";
       } else if (res.code === -2 && res.info === "Invalid or expired JWT") {
@@ -623,7 +623,7 @@ const ChatPage = () => {
       }
     } catch (error) {
       // 关闭加载提示
-      loadingMessage();
+      // loadingMessage();
       messageApi.error("网络错误，请稍后重试");
     }
   };
@@ -1787,7 +1787,6 @@ const ChatPage = () => {
               )} 
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px' }}>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  {/* TODO(暂无需考虑): 额外信息===================================================================== */}
                   <Popover 
                     content={renderEmojiContent()} 
                     trigger="click" 
@@ -1862,7 +1861,6 @@ const ChatPage = () => {
                     style={{ display: 'none' }}
                     onChange={handleImageUpload}
                   />
-                  {/* TODO(暂无需考虑): 额外信息===================================================================== */}
                 </div>
                 
                 <TextArea

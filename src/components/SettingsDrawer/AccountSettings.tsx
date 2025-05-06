@@ -236,7 +236,7 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
       .then(async (res) => {
         if (res.code === 0) {
           const decrypted_code = await decrypt(res.verify_code);
-          console.log(decrypted_code);
+          // console.log(decrypted_code);
           setSavedVerifyCode(decrypted_code);
           setVerifyCodeExpiry(new Date(Date.now() + 5 * 60 * 1000));
           messageApi.open({
