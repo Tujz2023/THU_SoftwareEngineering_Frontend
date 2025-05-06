@@ -7,6 +7,7 @@ import {
 } from "@ant-design/icons";
 import AccountSettings from "./SettingsDrawer/AccountSettings";
 import PrivacySettings from "./SettingsDrawer/PrivacySettings";
+import Cookies from "js-cookie";
 
 const { Title, Text } = Typography;
 
@@ -47,7 +48,7 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose, userI
           </div>
         }
         placement="left"
-        onClose={onClose}
+        onClose={() => {if (Cookies.get("jwtToken")) onClose();}}
         open={visible}
         width="38vw"
         styles={{ 
