@@ -47,11 +47,23 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
   }, [countdown]);
 
   const handleDeleteAccount = () => {
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+    
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
     fetch("/api/account/delete", {
       method: "DELETE",
-      headers: {
-        Authorization: `${token}`,
-      },
+      headers: headers,
+      credentials: 'include',
     })
       .then((res) => res.json())
       .then((res) => {
@@ -174,14 +186,24 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
       });
       return;
     }
-    
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+        
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
     await fetch("/api/account/info", {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `${token}`,
-      },
+      headers: headers,
       body: JSON.stringify(payload),
+      credentials: 'include',
     })
       .then((res) => res.json())
       .then((res) => {
@@ -224,13 +246,23 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
 
     setIsSendingCode(true);
     setCountdown(60);
-    
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+        
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
     await fetch('api/verify', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: headers,
       body: JSON.stringify({ email: userEmail }),
+      credentials: 'include',
     })
       .then((res) => res.json())
       .then(async (res) => {

@@ -103,15 +103,26 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
 
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
     setGroupListLoading(true);
     try {
       const response = await fetch("/api/groups/manage_groups", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({ group_id: groupId, new_name: newName }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -151,15 +162,27 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
 
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
+
     setGroupListLoading(true);
     try {
       const response = await fetch("/api/groups/manage_groups", {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({ group_id: groupToDelete }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -248,15 +271,27 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
 
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
+
     setGroupListLoading(true);
     try {
       const response = await fetch("/api/groups", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({ name: newGroupName }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -293,15 +328,27 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
 
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
+
     setMembersLoading(true);
     try {
       const response = await fetch("/api/groups/members", {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({ group_id: selectedGroupId, member_id: memberToDelete }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -425,15 +472,27 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
 
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
+
     setLoading(true);
     try {
       const response = await fetch("/api/groups/members", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({ group_id: selectedGroupId, member_id: friendId }),
+        credentials: 'include',
       });
 
       const res = await response.json();

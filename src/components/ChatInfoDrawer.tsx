@@ -288,21 +288,32 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
       messageApi.warning("请输入附言");
       return;
     }
+    const token = Cookies.get("jwtToken");
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                        
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
     
     setSendingFriendRequest(true);
-    const token = Cookies.get("jwtToken");
 
     try {
       const response = await fetch("/api/add_friend", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           target_id: targetId,
           message: addFriendMessageText.trim(),
         }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -412,17 +423,29 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     setInviteLoading(true);
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                        
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
+
     try {
       const response = await fetch(`/api/conversations/member/add`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           conversationId,
           member_id: selectedFriend,
         }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -469,17 +492,29 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     setLoadingAction(memberId);
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                        
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
+
     try {
       const response = await fetch(`/api/conversations/manage/admin`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           conversation_id: conversationId,
           user: memberId,
         }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -509,18 +544,29 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     
     setLoadingAction(memberId);
     const token = Cookies.get("jwtToken");
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                        
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
 
     try {
       const response = await fetch(`/api/conversations/manage/admin`, {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           conversation_id: conversationId,
           user: memberId,
         }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -555,17 +601,29 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     setTransferLoading(true);
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                        
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
+
     try {
       const response = await fetch(`/api/conversations/manage/ownership_transfer`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           conversation_id: conversationId,
           user: targetMember.id,
         }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -614,17 +672,29 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     setIsPostingNotification(true);
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                        
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
+
     try {
       const response = await fetch(`/api/conversations/manage/notifications`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           conversation_id: conversationId,
           content: notificationContent.trim(),
         }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -659,16 +729,28 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     setDeletingNotificationId(notificationId);
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                        
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
+
     try {
       const response = await fetch(`/api/conversations/manage/notifications`, {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           notification_id: notificationId,
         }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -742,16 +824,28 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     setProcessingInviteId(inviteId);
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                        
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
+
     try {
       const response = await fetch(`/api/conversations/manage/handle_invitation`, {
         method: accept ? "POST" : "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           invite_id: inviteId,
         }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -797,6 +891,20 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     
     setSettingLoading(true);
     const token = Cookies.get("jwtToken");
+
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                        
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
     
     const requestBody: {
       conversationId: number;
@@ -816,11 +924,9 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     try {
       const response = await fetch("/api/interface", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify(requestBody),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -874,6 +980,20 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     setMessageLoading(true);
     setSelectedMessages([]);
     const token = Cookies.get("jwtToken");
+
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                        
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
     
     // 准备请求体
     const requestBody: {
@@ -905,11 +1025,9 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     try {
       const response = await fetch(`/api/conversations/sift`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify(requestBody),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -947,16 +1065,28 @@ const deleteMessages = async () => {
   setDeletingMessages(true);
   const token = Cookies.get("jwtToken");
 
+  const csrfToken = Cookies.get('csrftoken');
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    Authorization: `${token}`,
+  };
+                        
+  if (csrfToken) {
+    headers['X-CSRFToken'] = csrfToken;
+  }
+  else {
+    messageApi.error('CSRF错误');
+    return ;
+  }
+
   try {
     const response = await fetch(`/api/conversations/delete_messages`, {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `${token}`,
-      },
+      headers: headers,
       body: JSON.stringify({
         message_ids: selectedMessages
       }),
+      credentials: 'include',
     });
 
     const res = await response.json();
@@ -1067,6 +1197,20 @@ const deleteMessages = async () => {
     
     setIsSubmitting(true);
     const token = Cookies.get("jwtToken");
+
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                        
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
     
     // 准备请求体，只包含有变化的字段
     const requestBody: {
@@ -1096,11 +1240,9 @@ const deleteMessages = async () => {
     try {
       const response = await fetch(`/api/conversations/manage/info`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify(requestBody),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -1138,16 +1280,28 @@ const deleteMessages = async () => {
 
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                        
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
+
     try {
       const response = await fetch(`/api/conversations/member/remove`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           conversation_id: conversationId
         }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -1175,17 +1329,29 @@ const deleteMessages = async () => {
 
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                        
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
+
     try {
       const response = await fetch(`/api/conversations/member/remove`, {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           conversation_id: conversationId,
           user: memberId
         }),
+        credentials: 'include',
       });
 
       const res = await response.json();

@@ -79,19 +79,31 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ visible, onClose, o
       setGroupName(finalGroupName);
     }
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                        
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
+
     setLoading(true);
 
     try {
       const response = await fetch("/api/conversations", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           members: selectedFriends,
           name: finalGroupName,
         }),
+        credentials: 'include',
       });
 
       const res = await response.json();

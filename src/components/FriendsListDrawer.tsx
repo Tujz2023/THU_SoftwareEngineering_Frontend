@@ -115,17 +115,29 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
   const handleAcceptRequest = async (senderId: number, receiverId: number) => {
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                    
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
+
     try {
       const response = await fetch("/api/friend_request_handle", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           sender_user_id: senderId,
           receiver_user_id: receiverId,
         }),
+        credentials: 'include'
       });
 
       const res = await response.json();
@@ -155,17 +167,29 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
   const handleRejectRequest = async (senderId: number, receiverId: number) => {
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                    
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
+
     try {
       const response = await fetch("/api/friend_request_handle", {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           sender_user_id: senderId,
           receiver_user_id: receiverId,
         }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -242,14 +266,26 @@ const FriendsListDrawer: React.FC<FriendsListDrawerProps> = ({
   const handleDeleteFriend = async (friendId: number) => {
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                    
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
+
     try {
       const response = await fetch("/api/manage_friends", {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({ friend_id: friendId }),
+        credentials: 'include',
       });
 
       const res = await response.json();

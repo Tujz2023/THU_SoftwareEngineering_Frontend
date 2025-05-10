@@ -20,6 +20,12 @@ const WelcomePage = () => {
   const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
+    fetch('/api/csrf', {
+      credentials: 'include'
+    })
+  }, []);
+
+  useEffect(() => {
     // 检查 cookies 中是否已存在 jwtToken
     const jwtToken = Cookies.get('jwtToken');
     if (jwtToken) {
@@ -57,15 +63,26 @@ const WelcomePage = () => {
     setLoading(true);
     try {
       const encrypt_password = await encrypt(password);
+      const csrfToken = Cookies.get('csrftoken');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+
+      if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+      }
+      else {
+        messageApi.error('CSRF错误');
+        return ;
+      }
       const response = await fetch(`/api/account/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
         body: JSON.stringify({
           "email": userEmail,
           "password": encrypt_password
         }),
+        credentials: 'include',
       });
       
       const res = await response.json();

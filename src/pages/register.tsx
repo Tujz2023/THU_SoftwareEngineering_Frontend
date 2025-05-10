@@ -69,18 +69,29 @@ const RegisterPage = () => {
     setIsSendingCode(true);
     setCountdown(60);
     
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
     await fetch('api/verify', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: headers,
       body: JSON.stringify({ email: userEmail }),
+      credentials: 'include',
     })
       .then((res) => res.json())
       .then(async (res) => {
         if (res.code === 0) {
           const decrypted_code = await decrypt(res.verify_code);
-          // console.log(decrypted_code);
+          console.log(decrypted_code);
           setSavedVerifyCode(decrypted_code);
           setVerifyCodeExpiry(new Date(Date.now() + 5 * 60 * 1000));
           messageApi.open({
@@ -129,16 +140,27 @@ const RegisterPage = () => {
     }
 
     const encrypt_password = await encrypt(password);
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
     await fetch(`/api/account/reg`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: headers,
       body: JSON.stringify({
         "email": userEmail,
         "password": encrypt_password,
         "name": username,
       }),
+      credentials: 'include',
     })
       .then((res) => res.json())
       .then((res) => {
@@ -290,7 +312,11 @@ const RegisterPage = () => {
                 border: 'none',
                 overflow: 'hidden',
               }}
-              bodyStyle={{ padding: '2rem' }}
+              styles={{
+                body: {
+                  padding: '2rem'
+                }
+              }}
             >
               {errorMessage && (
                 <Alert
@@ -458,7 +484,11 @@ const RegisterPage = () => {
               border: '1px solid rgba(138, 43, 226, 0.1)',
               boxShadow: '0 8px 25px rgba(0, 0, 0, 0.1)',
             }}
-            bodyStyle={{ padding: '1.5rem' }}
+            styles={{
+                body: {
+                  padding: '1.5rem'
+                }
+              }}
           >
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', color: '#8A2BE2' }}>
               <InfoCircleOutlined style={{ fontSize: '1.2rem', marginRight: '0.5rem' }} />

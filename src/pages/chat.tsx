@@ -365,16 +365,27 @@ const ChatPage = () => {
 
   const fetchReadList = async (messageId: number) => {
     setReadListLoading(true);
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+            
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
     try {
       const response = await fetch(`/api/conversations/readlist`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`
-        },
+        headers: headers,
         body: JSON.stringify({
           message_id: messageId
-        })
+        }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -524,18 +535,29 @@ const ChatPage = () => {
       return;
     }
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+            
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
     try {
       const response = await fetch("/api/conversations/messages", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           conversationId: selectedConversationId,
           content: input.trim(),
           reply_to: replyToMessage?.id 
         }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -586,6 +608,18 @@ const ChatPage = () => {
     // 显示加载提示
     // const loadingMessage = messageApi.loading("正在上传图片...", 0);
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      Authorization: `${token}`,
+    };
+            
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
     try {
       const formData = new FormData();
       formData.append("conversationId", selectedConversationId.toString());
@@ -593,10 +627,9 @@ const ChatPage = () => {
 
       const response = await fetch('/api/conversations/image', {
         method: 'POST',
-        headers: {
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: formData,
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -738,17 +771,28 @@ const ChatPage = () => {
   const markAsUnread = async (conversationId: number) => {
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+            
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
     try {
       const response = await fetch("/api/interface", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           conversationId,
           unreads: true
         }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -792,17 +836,28 @@ const ChatPage = () => {
   const toggleConversationTop = async (conversationId: number, isTop: boolean) => {
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+            
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
     try {
       const response = await fetch("/api/interface", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           conversationId,
           ontop: isTop
         }),
+        credentials: 'include',
       });
 
       const res = await response.json();
@@ -826,17 +881,29 @@ const ChatPage = () => {
   const toggleConversationNotification = async (conversationId: number, noticeAble: boolean) => {
     const token = Cookies.get("jwtToken");
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+            
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
+
     try {
       const response = await fetch("/api/interface", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           conversationId,
           notification: noticeAble
         }),
+        credentials: 'include',
       });
 
       const res = await response.json();

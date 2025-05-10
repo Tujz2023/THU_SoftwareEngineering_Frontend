@@ -93,17 +93,28 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
       return;
     }
 
+    const csrfToken = Cookies.get('csrftoken');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `${token}`,
+    };
+                
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    else {
+      messageApi.error('CSRF错误');
+      return ;
+    }
     try {
       const response = await fetch("/api/add_friend", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
+        headers: headers,
         body: JSON.stringify({
           target_id: targetUserId,
           message: messageText.trim(),
         }),
+        credentials: 'include',
       });
 
       const res = await response.json();
