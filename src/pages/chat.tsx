@@ -381,7 +381,7 @@ const ChatPage = () => {
     try {
       const response = await fetch(`/api/conversations/readlist`, {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           message_id: messageId
         }),
@@ -551,7 +551,7 @@ const ChatPage = () => {
     try {
       const response = await fetch("/api/conversations/messages", {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           conversationId: selectedConversationId,
           content: input.trim(),
@@ -627,7 +627,7 @@ const ChatPage = () => {
 
       const response = await fetch('/api/conversations/image', {
         method: 'POST',
-        headers: headers,
+        headers,
         body: formData,
         credentials: 'include',
       });
@@ -787,7 +787,7 @@ const ChatPage = () => {
     try {
       const response = await fetch("/api/interface", {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           conversationId,
           unreads: true
@@ -852,7 +852,7 @@ const ChatPage = () => {
     try {
       const response = await fetch("/api/interface", {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           conversationId,
           ontop: isTop
@@ -898,7 +898,7 @@ const ChatPage = () => {
     try {
       const response = await fetch("/api/interface", {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           conversationId,
           notification: noticeAble

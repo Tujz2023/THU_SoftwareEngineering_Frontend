@@ -120,7 +120,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
     try {
       const response = await fetch("/api/groups/manage_groups", {
         method: "PUT",
-        headers: headers,
+        headers,
         body: JSON.stringify({ group_id: groupId, new_name: newName }),
         credentials: 'include',
       });
@@ -180,7 +180,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
     try {
       const response = await fetch("/api/groups/manage_groups", {
         method: "DELETE",
-        headers: headers,
+        headers,
         body: JSON.stringify({ group_id: groupToDelete }),
         credentials: 'include',
       });
@@ -289,7 +289,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
     try {
       const response = await fetch("/api/groups", {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify({ name: newGroupName }),
         credentials: 'include',
       });
@@ -346,7 +346,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
     try {
       const response = await fetch("/api/groups/members", {
         method: "DELETE",
-        headers: headers,
+        headers,
         body: JSON.stringify({ group_id: selectedGroupId, member_id: memberToDelete }),
         credentials: 'include',
       });
@@ -490,7 +490,7 @@ const GroupManagementDrawer: React.FC<GroupManagementDrawerProps> = ({
     try {
       const response = await fetch("/api/groups/members", {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify({ group_id: selectedGroupId, member_id: friendId }),
         credentials: 'include',
       });

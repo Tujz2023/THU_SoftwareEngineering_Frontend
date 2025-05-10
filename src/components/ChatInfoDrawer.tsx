@@ -308,7 +308,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     try {
       const response = await fetch("/api/add_friend", {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           target_id: targetId,
           message: addFriendMessageText.trim(),
@@ -440,7 +440,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     try {
       const response = await fetch(`/api/conversations/member/add`, {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           conversationId,
           member_id: selectedFriend,
@@ -509,7 +509,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     try {
       const response = await fetch(`/api/conversations/manage/admin`, {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           conversation_id: conversationId,
           user: memberId,
@@ -561,7 +561,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     try {
       const response = await fetch(`/api/conversations/manage/admin`, {
         method: "DELETE",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           conversation_id: conversationId,
           user: memberId,
@@ -618,7 +618,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     try {
       const response = await fetch(`/api/conversations/manage/ownership_transfer`, {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           conversation_id: conversationId,
           user: targetMember.id,
@@ -689,7 +689,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     try {
       const response = await fetch(`/api/conversations/manage/notifications`, {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           conversation_id: conversationId,
           content: notificationContent.trim(),
@@ -746,7 +746,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     try {
       const response = await fetch(`/api/conversations/manage/notifications`, {
         method: "DELETE",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           notification_id: notificationId,
         }),
@@ -841,7 +841,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     try {
       const response = await fetch(`/api/conversations/manage/handle_invitation`, {
         method: accept ? "POST" : "DELETE",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           invite_id: inviteId,
         }),
@@ -924,7 +924,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     try {
       const response = await fetch("/api/interface", {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify(requestBody),
         credentials: 'include',
       });
@@ -1025,7 +1025,7 @@ const ChatInfoDrawer = ({ visible, onClose, conversationId, isGroup, groupName, 
     try {
       const response = await fetch(`/api/conversations/sift`, {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify(requestBody),
         credentials: 'include',
       });
@@ -1082,7 +1082,7 @@ const deleteMessages = async () => {
   try {
     const response = await fetch(`/api/conversations/delete_messages`, {
       method: "DELETE",
-      headers: headers,
+      headers,
       body: JSON.stringify({
         message_ids: selectedMessages
       }),
@@ -1240,7 +1240,7 @@ const deleteMessages = async () => {
     try {
       const response = await fetch(`/api/conversations/manage/info`, {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify(requestBody),
         credentials: 'include',
       });
@@ -1297,7 +1297,7 @@ const deleteMessages = async () => {
     try {
       const response = await fetch(`/api/conversations/member/remove`, {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           conversation_id: conversationId
         }),
@@ -1346,7 +1346,7 @@ const deleteMessages = async () => {
     try {
       const response = await fetch(`/api/conversations/member/remove`, {
         method: "DELETE",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           conversation_id: conversationId,
           user: memberId

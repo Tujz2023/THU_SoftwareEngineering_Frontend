@@ -62,7 +62,7 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
     }
     fetch("/api/account/delete", {
       method: "DELETE",
-      headers: headers,
+      headers,
       credentials: 'include',
     })
       .then((res) => res.json())
@@ -201,7 +201,7 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
     }
     await fetch("/api/account/info", {
       method: "PUT",
-      headers: headers,
+      headers,
       body: JSON.stringify(payload),
       credentials: 'include',
     })
@@ -260,7 +260,7 @@ const AccountSettings: React.FC<AccountSettingsProps & { fetchUserInfo: () => vo
     }
     await fetch('api/verify', {
       method: 'POST',
-      headers: headers,
+      headers,
       body: JSON.stringify({ email: userEmail }),
       credentials: 'include',
     })

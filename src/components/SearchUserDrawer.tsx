@@ -109,7 +109,7 @@ const SearchUserDrawer: React.FC<SearchUserDrawerProps> = ({ visible, onClose })
     try {
       const response = await fetch("/api/add_friend", {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           target_id: targetUserId,
           message: messageText.trim(),

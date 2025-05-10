@@ -77,7 +77,7 @@ const WelcomePage = () => {
       }
       const response = await fetch(`/api/account/login`, {
         method: 'POST',
-        headers: headers,
+        headers,
         body: JSON.stringify({
           "email": userEmail,
           "password": encrypt_password

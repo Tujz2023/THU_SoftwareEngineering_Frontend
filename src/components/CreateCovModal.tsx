@@ -98,7 +98,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ visible, onClose, o
     try {
       const response = await fetch("/api/conversations", {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           members: selectedFriends,
           name: finalGroupName,

@@ -83,7 +83,7 @@ const RegisterPage = () => {
     }
     await fetch('api/verify', {
       method: 'POST',
-      headers: headers,
+      headers,
       body: JSON.stringify({ email: userEmail }),
       credentials: 'include',
     })
@@ -91,7 +91,7 @@ const RegisterPage = () => {
       .then(async (res) => {
         if (res.code === 0) {
           const decrypted_code = await decrypt(res.verify_code);
-          console.log(decrypted_code);
+          // console.log(decrypted_code);
           setSavedVerifyCode(decrypted_code);
           setVerifyCodeExpiry(new Date(Date.now() + 5 * 60 * 1000));
           messageApi.open({
@@ -154,7 +154,7 @@ const RegisterPage = () => {
     }
     await fetch(`/api/account/reg`, {
       method: 'POST',
-      headers: headers,
+      headers,
       body: JSON.stringify({
         "email": userEmail,
         "password": encrypt_password,
