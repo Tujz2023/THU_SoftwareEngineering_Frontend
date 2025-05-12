@@ -1,12 +1,8 @@
 import React, { useState } from "react";
 import { Drawer, Typography, Divider } from "antd";
-import { 
-  UserOutlined, 
-  LockOutlined, 
-  SettingOutlined
-} from "@ant-design/icons";
+import { UserOutlined, InfoCircleOutlined, SettingOutlined } from "@ant-design/icons";
 import AccountSettings from "./SettingsDrawer/AccountSettings";
-import PrivacySettings from "./SettingsDrawer/PrivacySettings";
+import AboutUs from "./SettingsDrawer/AboutUs";
 import Cookies from "js-cookie";
 
 const { Title, Text } = Typography;
@@ -24,15 +20,15 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose, userI
   // 菜单项配置
   const menuItems = [
     { key: "账号设置", icon: <UserOutlined />, title: "账号设置" },
-    { key: "隐私设置", icon: <LockOutlined />, title: "隐私设置" },
+    { key: "关于我们", icon: <InfoCircleOutlined />, title: "关于我们" },
   ];
 
   const renderContent = () => {
     switch (activeMenu) {
       case "账号设置":
         return <AccountSettings userInfo={userInfo} fetchUserInfo={fetchUserInfo} />;
-      case "隐私设置":
-        return <PrivacySettings />;
+      case "关于我们":
+        return <AboutUs />;
       default:
         return undefined;
     }
