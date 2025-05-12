@@ -256,7 +256,7 @@ const AboutUs: React.FC = () => {
       >
         <Title level={5} style={{ color: '#8A2BE2', marginTop: 0 }}>联系我们</Title>
         <Paragraph style={{ fontSize: 'clamp(0.875rem, 2.5vw, 0.938rem)' }}>
-          如果您有任何问题、建议或合作意向，欢迎通过以下方式联系我们：
+          如果您有任何问题、建议或合作意向，欢迎通过Github联系我们：
         </Paragraph>
         
         <div style={{ 
@@ -265,38 +265,6 @@ const AboutUs: React.FC = () => {
           borderRadius: '0.5rem',
           marginTop: '1rem'
         }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'flex-start',
-            marginBottom: '0.75rem',
-            flexWrap: 'wrap'
-          }}>
-            <MailOutlined style={{ 
-              fontSize: '1.125rem', 
-              color: '#8A2BE2', 
-              marginRight: '0.75rem',
-              marginTop: '0.25rem',
-              flexShrink: 0 
-            }} />
-            <div style={{ flex: 1 }}>
-              <Text style={{ fontSize: 'clamp(0.875rem, 2.5vw, 0.938rem)' }}>项目邮箱：</Text>
-              <Text 
-                strong 
-                style={{ 
-                  marginLeft: '0.5rem', 
-                  cursor: 'pointer',
-                  fontSize: 'clamp(0.875rem, 2.5vw, 0.938rem)',
-                  wordBreak: 'break-all',
-                  display: 'inline-flex',
-                  alignItems: 'center'
-                }}
-                onClick={() => copyEmail('chatapp@example.com')}
-              >
-                chatapp@example.com
-                <CopyOutlined style={{ marginLeft: '0.5rem', fontSize: '0.875rem', color: '#8A2BE2' }} />
-              </Text>
-            </div>
-          </div>
           
           <div style={{ 
             display: 'flex', 
@@ -313,7 +281,7 @@ const AboutUs: React.FC = () => {
             <div style={{ flex: 1 }}>
               <Text style={{ fontSize: 'clamp(0.875rem, 2.5vw, 0.938rem)' }}>项目网站：</Text>
               <a 
-                href="https://example.com" 
+                href="https://github.com/Tujz2023/THU_SoftwareEngineering_InstantMessage" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 style={{ 
@@ -324,7 +292,7 @@ const AboutUs: React.FC = () => {
                   wordBreak: 'break-all'
                 }}
               >
-                www.example.com
+                https://github.com/Tujz2023/THU_SoftwareEngineering_InstantMessage
               </a>
             </div>
           </div>

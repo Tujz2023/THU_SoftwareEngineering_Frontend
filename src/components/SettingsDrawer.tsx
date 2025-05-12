@@ -46,7 +46,7 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ visible, onClose, userI
         placement="left"
         onClose={() => {if (Cookies.get("jwtToken")) onClose();}}
         open={visible}
-        width="38vw"
+        width="45vw"
         styles={{ 
           header: {
             background: "linear-gradient(90deg, #8A2BE2, #7B1FA2)",
