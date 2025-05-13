@@ -1,8 +1,8 @@
 import React, { useCallback, useState, useEffect, useRef, useActionState } from "react";
 import { useRouter } from "next/router";
 import Cookies from "js-cookie";
-import { Input, Button, Layout, List, Avatar, Typography, message, Badge, Empty, Tooltip, Spin, Divider, Tag, Popover } from "antd";
-import { MessageOutlined, TeamOutlined, SettingOutlined, PictureOutlined, SmileOutlined, MoreOutlined, ContactsOutlined, SendOutlined, SearchOutlined, ClockCircleOutlined, PlusCircleOutlined, CloseOutlined, CheckCircleOutlined, PushpinOutlined, BellOutlined } from "@ant-design/icons";
+import { Input, Button, Layout, List, Avatar, Typography, message, Badge, Empty, Tooltip, Spin, Divider, Tag, Popover, Modal } from "antd";
+import { MessageOutlined, TeamOutlined, SettingOutlined, PictureOutlined, SmileOutlined, MoreOutlined, ContactsOutlined, SendOutlined, SearchOutlined, ClockCircleOutlined, PlusCircleOutlined, CloseOutlined, CheckCircleOutlined, PushpinOutlined, BellOutlined, RobotOutlined} from "@ant-design/icons";
 import 'antd/dist/reset.css';
 import SettingsDrawer from "../components/SettingsDrawer";
 import FriendsListDrawer from "../components/FriendsListDrawer";
@@ -12,6 +12,8 @@ import { FriendRequest } from "../utils/types";
 import ChatInfoDrawer from "../components/ChatInfoDrawer";
 import { useMessageListener } from "../utils/websocket";
 import { emojis } from "../utils/emojis"; 
+import DeepseekChatPage from "./deepseek_chat";
+
 const { Header, Sider, Content } = Layout;
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -120,6 +122,19 @@ const ChatPage = () => {
   //表情相关状态
   const [emojiVisible, setEmojiVisible] = useState(false);
 
+  // 添加 DeepSeek 聊天窗口相关状态
+  const [isDeepseekVisible, setIsDeepseekVisible] = useState(false);
+  const [deepseekKey, setDeepseekKey] = useState(0);
+  // 打开/关闭 DeepSeek 聊天窗口
+  const toggleDeepseekModal = () => {
+    if (isDeepseekVisible) {
+      // 如果是关闭模态框，则在下次打开时更新 key 值
+      setIsDeepseekVisible(false);
+      setDeepseekKey(prevKey => prevKey + 1);
+    } else {
+      setIsDeepseekVisible(true);
+    }
+  };
   
   // 添加滚动到指定消息的函数
   const scrollToMessage = (messageId: number) => {
@@ -1162,8 +1177,35 @@ const ChatPage = () => {
                   <PlusCircleOutlined style={{ fontSize: "22px", color: "#fff" }} />
                 </div>
               </Tooltip>
-            </div>
-            
+              
+            {/* 添加 DeepSeek AI 助手按钮 */}
+            <Tooltip title="AI 助手" placement="right">
+              <div style={{ 
+                width: '40px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '12px', 
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                transition: 'all 0.3s ease',
+                cursor: "pointer",
+                position: 'relative',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)';
+                e.currentTarget.style.transform = 'scale(1.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+              onClick={toggleDeepseekModal}
+              >
+                <RobotOutlined style={{ fontSize: "22px", color: "#fff" }} />
+              </div>
+            </Tooltip>
+          </div>
             {/* 底部的设置按钮 */}
             <Tooltip title="设置" placement="right">
               <div style={{ 
@@ -2336,6 +2378,31 @@ const ChatPage = () => {
           </div>
         )}
       </Layout>
+
+      {/* 添加 DeepSeek 聊天模态框 */}
+      <Modal
+        title={
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <Avatar 
+              icon={<RobotOutlined />} 
+              style={{ 
+                backgroundColor: "#8A2BE2", 
+                color: "#fff",
+                marginRight: 12
+              }} 
+            />
+            <span>DeepSeek AI 助手</span>
+          </div>
+        }
+        open={isDeepseekVisible}
+        onCancel={toggleDeepseekModal}
+        footer={[]}
+        width={800}
+        style={{ top: 20 }}
+        styles={{ body: { padding: 0, height: "70vh" } }}
+      >
+        <DeepseekChatPage key={deepseekKey}/>
+      </Modal>
     </>
   );
 };
