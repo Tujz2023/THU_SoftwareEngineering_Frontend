@@ -12,7 +12,7 @@ import { FriendRequest } from "../utils/types";
 import ChatInfoDrawer from "../components/ChatInfoDrawer";
 import { useMessageListener } from "../utils/websocket";
 import { emojis } from "../utils/emojis"; 
-import DeepseekChatPage from "./deepseek_chat";
+import QwenChatPage from "./qwen_chat";
 
 const { Header, Sider, Content } = Layout;
 const { Text, Title } = Typography;
@@ -122,17 +122,17 @@ const ChatPage = () => {
   //表情相关状态
   const [emojiVisible, setEmojiVisible] = useState(false);
 
-  // 添加 DeepSeek 聊天窗口相关状态
-  const [isDeepseekVisible, setIsDeepseekVisible] = useState(false);
-  const [deepseekKey, setDeepseekKey] = useState(0);
-  // 打开/关闭 DeepSeek 聊天窗口
-  const toggleDeepseekModal = () => {
-    if (isDeepseekVisible) {
+  // 添加 qwen 聊天窗口相关状态
+  const [isqwenVisible, setIsqwenVisible] = useState(false);
+  const [qwenKey, setqwenKey] = useState(0);
+  // 打开/关闭 qwen 聊天窗口
+  const toggleqwenModal = () => {
+    if (isqwenVisible) {
       // 如果是关闭模态框，则在下次打开时更新 key 值
-      setIsDeepseekVisible(false);
-      setDeepseekKey(prevKey => prevKey + 1);
+      setIsqwenVisible(false);
+      setqwenKey(prevKey => prevKey + 1);
     } else {
-      setIsDeepseekVisible(true);
+      setIsqwenVisible(true);
     }
   };
   
@@ -1178,7 +1178,7 @@ const ChatPage = () => {
                 </div>
               </Tooltip>
               
-            {/* 添加 DeepSeek AI 助手按钮 */}
+            {/* 添加 qwen AI 助手按钮 */}
             <Tooltip title="AI 助手" placement="right">
               <div style={{ 
                 width: '40px',
@@ -1200,7 +1200,7 @@ const ChatPage = () => {
                 e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
                 e.currentTarget.style.transform = 'scale(1)';
               }}
-              onClick={toggleDeepseekModal}
+              onClick={toggleqwenModal}
               >
                 <RobotOutlined style={{ fontSize: "22px", color: "#fff" }} />
               </div>
@@ -2379,7 +2379,7 @@ const ChatPage = () => {
         )}
       </Layout>
 
-      {/* 添加 DeepSeek 聊天模态框 */}
+      {/* 添加 qwen 聊天模态框 */}
       <Modal
         title={
           <div style={{ display: "flex", alignItems: "center" }}>
@@ -2391,17 +2391,17 @@ const ChatPage = () => {
                 marginRight: 12
               }} 
             />
-            <span>DeepSeek AI 助手</span>
+            <span>qwen AI 助手</span>
           </div>
         }
-        open={isDeepseekVisible}
-        onCancel={toggleDeepseekModal}
+        open={isqwenVisible}
+        onCancel={toggleqwenModal}
         footer={[]}
         width={800}
         style={{ top: 20 }}
         styles={{ body: { padding: 0, height: "70vh" } }}
       >
-        <DeepseekChatPage key={deepseekKey}/>
+        <QwenChatPage key={qwenKey}/>
       </Modal>
     </>
   );

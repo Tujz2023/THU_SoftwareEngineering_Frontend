@@ -12,7 +12,7 @@ interface ChatMessage {
   content: string;
 }
 
-const DeepseekChatPage = () => {
+const QwenChatPage = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -28,8 +28,8 @@ const DeepseekChatPage = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
   
-  // 发送消息到 DeepSeek API
-  const sendToDeepseek = async (userMessage: string) => {
+  // 发送消息到 qwen API
+  const sendToqwen = async (userMessage: string) => {
     // 添加用户消息到对话中
     const userMsg: ChatMessage = { role: 'user', content: userMessage };
     setMessages(prevMessages => [...prevMessages, userMsg]);
@@ -45,10 +45,10 @@ const DeepseekChatPage = () => {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${apiKey}`,
           "HTTP-Referer": window.location.origin,
-          "X-Title": "DeepSeek Chat Interface",
+          "X-Title": "Qwen Chat Interface",
         },
         body: JSON.stringify({
-          model: "deepseek/deepseek-chat-v3-0324:free",
+          model: "qwen/qwen3-32b:free",
           messages: allMessages.map(msg => ({
             role: msg.role,
             content: msg.content
@@ -62,7 +62,7 @@ const DeepseekChatPage = () => {
         throw new Error(result.error?.message || "API 调用失败");
       }
       
-      // 处理 DeepSeek 的响应
+      // 处理 qwen 的响应
       const assistantMessage = result.choices[0]?.message?.content || "抱歉，没有收到有效回复";
       
       setMessages(prevMessages => [
@@ -70,8 +70,8 @@ const DeepseekChatPage = () => {
         { role: 'assistant', content: assistantMessage }
       ]);
     } catch (error) {
-      console.error("调用 DeepSeek API 失败:", error);
-      messageApi.error("调用 DeepSeek API 失败，请稍后重试");
+      console.error("调用 qwen API 失败:", error);
+      messageApi.error("调用 qwen API 失败，请稍后重试");
       
       setMessages(prevMessages => [
         ...prevMessages, 
@@ -92,7 +92,7 @@ const DeepseekChatPage = () => {
     const userMessage = input.trim();
     setInput("");
     
-    await sendToDeepseek(userMessage);
+    await sendToqwen(userMessage);
   };
 
   return (
@@ -135,9 +135,9 @@ const DeepseekChatPage = () => {
                   marginBottom: 24
                 }} 
               />
-              <Title level={3} style={{ color: "#8A2BE2", margin: "0 0 12px 0" }}>DeepSeek 助手</Title>
+              <Title level={3} style={{ color: "#8A2BE2", margin: "0 0 12px 0" }}>qwen 助手</Title>
               <Text style={{ fontSize: 16, textAlign: "center", maxWidth: "90%" }}>
-                你好！我是 DeepSeek AI 助手，可以帮助你回答问题、提供信息或进行有趣的对话。请输入你的问题开始聊天吧！
+                你好！我是 qwen AI 助手，可以帮助你回答问题、提供信息或进行有趣的对话。请输入你的问题开始聊天吧！
               </Text>
             </div>
           ) : (
@@ -328,4 +328,4 @@ const DeepseekChatPage = () => {
   );
 };
 
-export default DeepseekChatPage;
+export default QwenChatPage;
